@@ -29,7 +29,10 @@ export function CentsMeter({ cents, tolerance }: CentsMeterProps) {
         />
 
         {/* Engraved scale. */}
-        <span aria-hidden="true" className="absolute inset-x-0 top-0 flex justify-between px-2 pt-1.5">
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 flex justify-between px-2 pt-1.5"
+        >
           {TICKS.map((tick) => (
             <span
               key={tick}

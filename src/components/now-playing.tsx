@@ -33,9 +33,8 @@ export function NowPlaying({
   const inTune = match !== null && Math.abs(match.cents) <= tolerance;
 
   return (
-    <div className="sticky top-4 z-20">
-      <div className="keycap relative bg-tile p-4">
-
+    <div className="flex min-w-0 flex-1">
+      <div className="keycap relative flex flex-1 flex-col justify-center bg-tile p-3">
         <div className="flex items-stretch gap-4">
           {/* Note display. */}
           <div className="flex w-[132px] shrink-0 flex-col gap-2">
@@ -77,7 +76,9 @@ export function NowPlaying({
               onClick={live || starting ? onStop : onStart}
               disabled={starting}
               className={`keycap keycap-pressable flex flex-1 items-center justify-center text-[13px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed disabled:cursor-wait ${
-                live ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite' : 'hover:bg-white'
+                live
+                  ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
+                  : 'hover:bg-white'
               }`}
             >
               {starting ? 'starting' : live ? 'stop' : 'listen'}

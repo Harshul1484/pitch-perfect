@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { detectPitch, type PitchReading } from '../lib/pitch';
+import {
+  SMOOTHING_FRAMES,
+  detectPitch,
+  medianFrequency,
+  type PitchReading,
+} from '../lib/pitch';
 
 export type ListenStatus =
-  | 'idle'
-  | 'starting'
-  | 'listening'
-  | 'blocked'
-  | 'unsupported'
-  | 'error';
+  'idle' | 'starting' | 'listening' | 'blocked' | 'unsupported' | 'error';
 
 /** 2048 samples at 44.1 kHz is ~46 ms — enough periods for the low strings. */
 const FFT_SIZE = 2048;
@@ -35,6 +35,8 @@ export function usePitchDetection(): PitchDetection {
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number | null>(null);
   const lastHeardRef = useRef(0);
+  /** Recent raw estimates, newest last, for the median. */
+  const historyRef = useRef<number[]>([]);
 
   const stop = useCallback(() => {
     if (frameRef.current !== null) {
@@ -42,6 +44,7 @@ export function usePitchDetection(): PitchDetection {
       frameRef.current = null;
     }
 
+    historyRef.current = [];
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
 
@@ -86,6 +89,7 @@ export function usePitchDetection(): PitchDetection {
         contextRef.current = context;
 
         const samples = new Float32Array(analyser.fftSize);
+        historyRef.current = [];
 
         const tick = () => {
           analyser.getFloatTimeDomainData(samples);
@@ -94,8 +98,19 @@ export function usePitchDetection(): PitchDetection {
 
           if (detected) {
             lastHeardRef.current = now;
-            setReading(detected);
+
+            const history = historyRef.current;
+            history.push(detected.frequency);
+            if (history.length > SMOOTHING_FRAMES) history.shift();
+
+            const smoothed = medianFrequency(history);
+            if (smoothed !== null) {
+              setReading({ frequency: smoothed, clarity: detected.clarity });
+            }
           } else if (now - lastHeardRef.current > HOLD_MS) {
+            // A real silence, not a dropped frame: forget the note entirely so
+            // the next one is not averaged against it.
+            historyRef.current = [];
             setReading(null);
           }
 

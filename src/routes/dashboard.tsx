@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ALL_NOTES, IN_TUNE_CENTS, nearestNote, type Note } from '../lib/notes';
 import { playFrequency } from '../lib/audio';
+import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
 import { ControlRail } from '../components/control-rail';
 import { Keybed } from '../components/keybed';
+import { MetronomePanel } from '../components/metronome-panel';
 import { NowPlaying } from '../components/now-playing';
 
 /** How long a key stays depressed after being clicked. */
@@ -17,7 +19,10 @@ export function Dashboard() {
   const [sustain, setSustain] = useState(14);
   const flashTimer = useRef<number | null>(null);
 
+  const [bpm, setBpm] = useState(90);
+
   const { status, reading, error, start, stop } = usePitchDetection();
+  const metronome = useMetronome(bpm, volume / 100);
 
   const match = useMemo(
     () => (reading ? nearestNote(reading.frequency) : null),
@@ -63,15 +68,26 @@ export function Dashboard() {
         <p className="mono-label hidden sm:block">equal temperament · mpm detection</p>
       </header>
 
-      <NowPlaying
-        status={status}
-        match={match}
-        frequency={reading?.frequency ?? null}
-        error={error}
-        tolerance={tolerance}
-        onStart={start}
-        onStop={stop}
-      />
+      <div className="flex shrink-0 gap-2.5">
+        <NowPlaying
+          status={status}
+          match={match}
+          frequency={reading?.frequency ?? null}
+          error={error}
+          tolerance={tolerance}
+          onStart={start}
+          onStop={stop}
+        />
+
+        <MetronomePanel
+          bpm={bpm}
+          onBpmChange={setBpm}
+          isRunning={metronome.isRunning}
+          beat={metronome.beat}
+          onToggle={metronome.toggle}
+          micOpen={status === 'listening'}
+        />
+      </div>
 
       <div className="flex min-h-0 flex-1 gap-2.5">
         <ControlRail
@@ -81,12 +97,10 @@ export function Dashboard() {
           onToleranceChange={setTolerance}
           sustain={sustain}
           onSustainChange={setSustain}
-          isLive={status === 'listening'}
         />
 
         {/* Key bed plate. */}
         <div className="keycap relative flex min-h-0 flex-1 flex-col bg-tile p-3">
-
           <div className="mb-2 flex shrink-0 items-center justify-between border-b border-hairline-soft pb-2">
             <span className="mono-label">key bed · a0 – c8</span>
             <span className="mono-label">

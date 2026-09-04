@@ -47,7 +47,13 @@ export function BrailleDigit({ digit, className = '' }: BrailleDigitProps) {
 }
 
 /** Renders each character of a number as its own braille cell. */
-export function BrailleNumber({ value, className = '' }: { value: number; className?: string }) {
+export function BrailleNumber({
+  value,
+  className = '',
+}: {
+  value: number;
+  className?: string;
+}) {
   return (
     <span className={`inline-flex gap-[3px] ${className}`} aria-hidden="true">
       {String(value)

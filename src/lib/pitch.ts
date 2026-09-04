@@ -131,3 +131,26 @@ export function detectPitch(
 
   return { frequency, clarity };
 }
+
+/**
+ * Median of the recent readings.
+ *
+ * A single analysis window is noisy: bow noise, room tone and the analyser's
+ * own windowing make individual estimates wander by tens of cents even on a
+ * steady note. A median rejects the occasional wild estimate outright, where a
+ * mean would let it drag the result. Five frames is about 80ms at 60fps, which
+ * is steady enough to read without feeling laggy.
+ */
+export function medianFrequency(readings: readonly number[]): number | null {
+  if (readings.length === 0) return null;
+
+  const sorted = [...readings].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+/** How many recent frames the median is taken over. */
+export const SMOOTHING_FRAMES = 5;

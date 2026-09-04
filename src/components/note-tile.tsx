@@ -60,11 +60,7 @@ export function NoteTile({
 
       <span
         className={`font-mono text-[9px] leading-none tabular-nums ${
-          detected
-            ? inTune
-              ? 'text-intune'
-              : 'text-signal'
-            : 'text-engrave'
+          detected ? (inTune ? 'text-intune' : 'text-signal') : 'text-engrave'
         }`}
       >
         {detected

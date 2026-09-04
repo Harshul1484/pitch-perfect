@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectPitch, rootMeanSquare } from './pitch';
+import { detectPitch, medianFrequency, rootMeanSquare } from './pitch';
 
 const SAMPLE_RATE = 44100;
 const WINDOW = 2048;
@@ -156,5 +156,35 @@ describe('detectPitch on quiet input', () => {
 
     expect(tonal!.clarity).toBeGreaterThan(0.9);
     expect(noisy!.clarity).toBeLessThan(0.4);
+  });
+});
+
+describe('medianFrequency', () => {
+  it('is null with nothing to average', () => {
+    expect(medianFrequency([])).toBeNull();
+  });
+
+  it('returns the middle value of an odd run', () => {
+    expect(medianFrequency([441, 439, 440])).toBe(440);
+  });
+
+  it('averages the middle pair of an even run', () => {
+    expect(medianFrequency([440, 442, 441, 439])).toBe(440.5);
+  });
+
+  it('rejects a wild outlier instead of being dragged by it', () => {
+    // One frame octave-jumps to 880. The median ignores it; a mean would not.
+    const readings = [440, 441, 880, 439, 440];
+
+    expect(medianFrequency(readings)).toBe(440);
+    const mean = readings.reduce((a, b) => a + b, 0) / readings.length;
+    expect(mean).toBeGreaterThan(500);
+  });
+
+  it('does not mutate its input', () => {
+    const readings = [443, 440, 441];
+    medianFrequency(readings);
+
+    expect(readings).toEqual([443, 440, 441]);
   });
 });

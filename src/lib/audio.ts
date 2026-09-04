@@ -7,7 +7,11 @@
 
 let context: AudioContext | null = null;
 
-function getContext(): AudioContext | null {
+/**
+ * The one AudioContext for the whole app. Shared with the metronome, because
+ * browsers cap how many a page may open.
+ */
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined' || typeof window.AudioContext === 'undefined') {
     return null;
   }
@@ -36,7 +40,7 @@ const SILENCE = 0.0001;
 export function playFrequency(frequency: number, options: PlayOptions = {}): boolean {
   const { durationSeconds = DEFAULT_DURATION, volume = 1 } = options;
 
-  const ctx = getContext();
+  const ctx = getAudioContext();
   if (!ctx) return false;
   if (volume <= 0) return false;
 
@@ -55,10 +59,7 @@ export function playFrequency(frequency: number, options: PlayOptions = {}): boo
 
   // A hard start and stop produces an audible click; ramping avoids it.
   gain.gain.setValueAtTime(SILENCE, startedAt);
-  gain.gain.exponentialRampToValueAtTime(
-    PEAK_GAIN * volume,
-    startedAt + ATTACK_SECONDS,
-  );
+  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN * volume, startedAt + ATTACK_SECONDS);
   gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
 
   oscillator.connect(gain);

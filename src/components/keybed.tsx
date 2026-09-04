@@ -38,8 +38,7 @@ export function Keybed({
   detectedCents,
   tolerance,
 }: KeybedProps) {
-  const detectedOctave =
-    detectedMidi === null ? null : Math.floor(detectedMidi / 12) - 1;
+  const detectedOctave = detectedMidi === null ? null : Math.floor(detectedMidi / 12) - 1;
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[34px_1fr] gap-2">
