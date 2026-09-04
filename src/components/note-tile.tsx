@@ -1,4 +1,4 @@
-import { IN_TUNE_CENTS, type Note } from '../lib/notes';
+import type { Note } from '../lib/notes';
 
 interface NoteTileProps {
   note: Note;
@@ -6,36 +6,44 @@ interface NoteTileProps {
   /** Flash from clicking the tile to hear it. */
   isActive: boolean;
   /**
-   * Cents off when this note is the one being heard through the microphone,
-   * null when it is not sounding.
+   * Cents off when this note is the one being heard, null when it is not
+   * sounding.
    */
   detectedCents?: number | null;
+  /** Cents either side of centre that still count as in tune. */
+  tolerance: number;
 }
 
 /**
- * A single note. Knows nothing about audio or the microphone — it reports
- * clicks upward and renders whatever state it is handed.
+ * One key on the bed. Naturals are pale caps, accidentals graphite ones,
+ * borrowing the keyboard's own encoding.
+ *
+ * Knows nothing about audio or the microphone — it reports clicks upward and
+ * renders the state it is handed.
  */
 export function NoteTile({
   note,
   onPlay,
   isActive,
   detectedCents = null,
+  tolerance,
 }: NoteTileProps) {
   const detected = detectedCents !== null;
-  const inTune = detected && Math.abs(detectedCents) <= IN_TUNE_CENTS;
+  const inTune = detected && Math.abs(detectedCents) <= tolerance;
 
-  const tone = note.isAccidental
-    ? 'bg-ink text-white/90 hover:bg-ink/85'
-    : 'bg-white text-ink hover:bg-white/70';
+  // Accidentals stay in the light palette, as on the reference hardware,
+  // distinguished by a deeper cap and edge rather than going near-black.
+  const surface = note.isAccidental
+    ? 'border-cap-dark-edge bg-cap-dark bg-none'
+    : 'bg-panel border-hairline';
 
-  let emphasis = 'ring-1 ring-black/10';
+  let state = '';
   if (detected) {
-    emphasis = inTune
-      ? 'ring-4 ring-intune shadow-lg shadow-intune/40 scale-105'
-      : 'ring-4 ring-offtune shadow-lg shadow-offtune/40 scale-105';
+    state = inTune
+      ? 'border-intune ring-[2.5px] ring-intune/35 -translate-y-px'
+      : 'border-signal ring-[2.5px] ring-signal/35 -translate-y-px';
   } else if (isActive) {
-    emphasis = 'ring-2 ring-accent scale-95';
+    state = 'keycap-pressed';
   }
 
   return (
@@ -44,13 +52,24 @@ export function NoteTile({
       onClick={() => onPlay(note)}
       aria-label={`Play ${note.label}, ${note.frequency.toFixed(2)} hertz`}
       aria-current={detected ? 'true' : undefined}
-      className={`flex aspect-square flex-col items-center justify-center rounded-lg transition-all duration-150 ${tone} ${emphasis}`}
+      className={`keycap keycap-pressable relative flex h-full w-full flex-col items-center justify-center gap-[3px] hover:border-engrave hover:bg-white ${surface} ${state}`}
     >
-      <span className="text-base font-semibold tabular-nums">{note.label}</span>
-      <span className="mt-0.5 text-[10px] opacity-60 tabular-nums">
+      <span className="text-[13px] font-medium leading-none tracking-tight tabular-nums">
+        {note.label}
+      </span>
+
+      <span
+        className={`font-mono text-[9px] leading-none tabular-nums ${
+          detected
+            ? inTune
+              ? 'text-intune'
+              : 'text-signal'
+            : 'text-engrave'
+        }`}
+      >
         {detected
-          ? `${detectedCents > 0 ? '+' : ''}${detectedCents}¢`
-          : `${note.frequency.toFixed(1)} Hz`}
+          ? `${detectedCents > 0 ? '+' : ''}${detectedCents}`
+          : note.frequency.toFixed(0)}
       </span>
     </button>
   );

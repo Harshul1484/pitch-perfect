@@ -1,12 +1,38 @@
 @import 'tailwindcss';
 
+/*
+ * Design language: a machined instrument panel. Surfaces are matte white and
+ * light grey, separated by thin graphite hairlines rather than shadows.
+ * Elevation comes from surface change and border weight, never from blur.
+ */
 @theme {
-  --color-ink: oklch(0.22 0.02 265);
-  --color-muted: oklch(0.55 0.02 265);
-  --color-accent: oklch(0.62 0.17 265);
-  --color-surface: oklch(0.98 0.005 265);
-  --color-intune: oklch(0.65 0.16 150);
-  --color-offtune: oklch(0.70 0.15 65);
+  /* Surfaces, lightest to deepest. */
+  --color-panel: #fafafa;
+  --color-tile: #f5f5f3;
+  --color-recess: #efefea;
+  --color-chassis: #e4e4df;
+  /* Accidentals stay inside the light palette, as on the reference hardware,
+     rather than going near-black. */
+  --color-cap-dark: #d8d8d1;
+  --color-cap-dark-edge: #a9a9a0;
+
+  /* Graphite line work and text. */
+  --color-graphite: #2b2b2b;
+  --color-hairline: #b4b4ac;
+  --color-hairline-soft: #d2d2cc;
+  --color-engrave: #8a8a84;
+
+  /* The single accent. Used only for live state and out-of-tune. */
+  --color-signal: #ff3b30;
+  --color-intune: #1f8a4c;
+
+  --font-sans:
+    'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Keycap geometry. */
+  --radius-cap: 10px;
+  --radius-module: 14px;
 }
 
 html {
@@ -15,7 +41,70 @@ html {
 
 body {
   margin: 0;
-  background-color: var(--color-surface);
-  color: var(--color-ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* A cool studio gradient, so the instrument sits on a surface rather than
+     floating on flat colour. */
+  background-color: #dfe3e6;
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #eef1f3 38%, #d7dde1 100%);
+  background-attachment: fixed;
+  color: var(--color-graphite);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
+}
+
+/*
+ * The one physical affordance in the system: a keycap sits on a 1px graphite
+ * hairline with a hairline of light along its top edge, and depresses on
+ * press. No drop shadows anywhere.
+ */
+@utility keycap {
+  /* A machined cap catches light along its top edge and falls away below. */
+  background-color: var(--color-panel);
+  background-image: linear-gradient(180deg, #ffffff 0%, var(--color-panel) 45%, #f1f1ed 100%);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-cap);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 -1px 0 rgb(43 43 43 / 0.04),
+    0 1px 1.5px rgb(43 43 43 / 0.07);
+  transition:
+    transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@utility keycap-pressable {
+  cursor: pointer;
+}
+
+@utility keycap-pressable--hover {
+  border-color: var(--color-engrave);
+}
+
+/* Physically depressed: it sinks and loses its top highlight. */
+@utility keycap-pressed {
+  transform: scale(0.98);
+  border-color: var(--color-graphite);
+  box-shadow: inset 0 1px 2px rgb(43 43 43 / 0.14);
+}
+
+/* Small mono metadata, lowercase and widely tracked. */
+@utility mono-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: var(--color-engrave);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
 }

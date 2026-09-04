@@ -18,6 +18,12 @@ function getContext(): AudioContext | null {
 
 export const DEFAULT_DURATION = 1.4;
 
+export interface PlayOptions {
+  durationSeconds?: number;
+  /** 0 to 1, scaling the peak gain. */
+  volume?: number;
+}
+
 const PEAK_GAIN = 0.28;
 const ATTACK_SECONDS = 0.015;
 /** exponentialRampToValueAtTime cannot reach zero, so decay to near-silence. */
@@ -27,12 +33,12 @@ const SILENCE = 0.0001;
  * Play a single tone. Returns false when Web Audio is unavailable, which is
  * the case in jsdom and in browsers that block audio entirely.
  */
-export function playFrequency(
-  frequency: number,
-  duration: number = DEFAULT_DURATION,
-): boolean {
+export function playFrequency(frequency: number, options: PlayOptions = {}): boolean {
+  const { durationSeconds = DEFAULT_DURATION, volume = 1 } = options;
+
   const ctx = getContext();
   if (!ctx) return false;
+  if (volume <= 0) return false;
 
   if (ctx.state === 'suspended') {
     void ctx.resume();
@@ -49,14 +55,17 @@ export function playFrequency(
 
   // A hard start and stop produces an audible click; ramping avoids it.
   gain.gain.setValueAtTime(SILENCE, startedAt);
-  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, startedAt + ATTACK_SECONDS);
-  gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + duration);
+  gain.gain.exponentialRampToValueAtTime(
+    PEAK_GAIN * volume,
+    startedAt + ATTACK_SECONDS,
+  );
+  gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
 
   oscillator.connect(gain);
   gain.connect(ctx.destination);
 
   oscillator.start(startedAt);
-  oscillator.stop(startedAt + duration);
+  oscillator.stop(startedAt + durationSeconds);
 
   return true;
 }

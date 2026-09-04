@@ -1,4 +1,4 @@
-import { IN_TUNE_CENTS, type PitchMatch } from '../lib/notes';
+import type { PitchMatch } from '../lib/notes';
 import type { ListenStatus } from '../hooks/use-pitch-detection';
 import { CentsMeter } from './cents-meter';
 
@@ -7,75 +7,97 @@ interface NowPlayingProps {
   match: PitchMatch | null;
   frequency: number | null;
   error: string | null;
+  tolerance: number;
   onStart: () => void;
   onStop: () => void;
 }
 
-const BUTTON =
-  'rounded-md px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90';
-
 /**
- * The readout. Sticks to the top of the page so the note you are playing is
- * always in view, however far down the grid its tile happens to sit.
+ * The readout. Sticks to the top of the page so the note being played is
+ * always in view, however far down the key bed its tile happens to sit.
+ *
+ * All three columns share one structure — a label row, a stretching body, and
+ * a footnote row — so their tops, bodies and baselines line up exactly.
  */
 export function NowPlaying({
   status,
   match,
   frequency,
   error,
+  tolerance,
   onStart,
   onStop,
 }: NowPlayingProps) {
-  const listening = status === 'listening';
-  const inTune = match !== null && Math.abs(match.cents) <= IN_TUNE_CENTS;
+  const live = status === 'listening';
+  const starting = status === 'starting';
+  const inTune = match !== null && Math.abs(match.cents) <= tolerance;
 
   return (
-    <div className="sticky top-0 z-10 -mx-6 border-b border-black/10 bg-surface/90 px-6 py-4 backdrop-blur">
-      <div className="flex items-center gap-6">
-        <div className="min-w-[7rem]">
-          <div
-            className={`text-5xl font-semibold tabular-nums transition-colors ${
-              match === null ? 'text-muted/30' : inTune ? 'text-intune' : 'text-offtune'
-            }`}
+    <div className="sticky top-4 z-20">
+      <div className="keycap relative bg-tile p-4">
+
+        <div className="flex items-stretch gap-4">
+          {/* Note display. */}
+          <div className="flex w-[132px] shrink-0 flex-col gap-2">
+            <span className="mono-label h-3 leading-3">note</span>
+            <span
+              className={`flex flex-1 items-center text-[44px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 ${
+                match === null ? 'text-hairline' : inTune ? 'text-intune' : 'text-signal'
+              }`}
+            >
+              {match?.note.label ?? '––'}
+            </span>
+            <span className="h-3 font-mono text-[11px] leading-3 tabular-nums text-engrave">
+              {frequency === null ? '–––.– hz' : `${frequency.toFixed(1)} hz`}
+            </span>
+          </div>
+
+          {/* Deviation meter. */}
+          <div className="flex flex-1 flex-col gap-2">
+            <span className="mono-label h-3 leading-3">deviation</span>
+            <CentsMeter cents={match?.cents ?? null} tolerance={tolerance} />
+          </div>
+
+          {/* Transport. */}
+          <div className="flex w-[104px] shrink-0 flex-col gap-2">
+            <span className="flex h-3 items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={`h-1.5 w-1.5 rounded-[1px] transition-colors duration-200 ${
+                  live ? 'bg-signal' : starting ? 'bg-engrave' : 'bg-hairline'
+                }`}
+              />
+              <span className="mono-label">
+                {live ? 'live' : starting ? 'wait' : 'idle'}
+              </span>
+            </span>
+
+            <button
+              type="button"
+              onClick={live || starting ? onStop : onStart}
+              disabled={starting}
+              className={`keycap keycap-pressable flex flex-1 items-center justify-center text-[13px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed disabled:cursor-wait ${
+                live ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite' : 'hover:bg-white'
+              }`}
+            >
+              {starting ? 'starting' : live ? 'stop' : 'listen'}
+            </button>
+
+            <span className="h-3 font-mono text-[10px] leading-3 lowercase text-engrave">
+              {live ? 'mic open' : 'mic closed'}
+            </span>
+          </div>
+        </div>
+
+        {error !== null && (
+          <p
+            role="alert"
+            className="mt-3 border-t border-hairline pt-3 font-mono text-[11px] text-signal"
           >
-            {match?.note.label ?? '—'}
-          </div>
-          <div className="mt-1 text-xs tabular-nums text-muted">
-            {frequency === null ? 'listening for a note' : `${frequency.toFixed(1)} Hz`}
-          </div>
-        </div>
-
-        <div className="flex-1">
-          <CentsMeter cents={match?.cents ?? null} />
-        </div>
-
-        <div>
-          {listening || status === 'starting' ? (
-            <button
-              type="button"
-              onClick={onStop}
-              className={`${BUTTON} bg-ink text-white`}
-              disabled={status === 'starting'}
-            >
-              {status === 'starting' ? 'Starting…' : 'Stop'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onStart}
-              className={`${BUTTON} bg-accent text-white`}
-            >
-              Listen
-            </button>
-          )}
-        </div>
+            {error}
+          </p>
+        )}
       </div>
-
-      {error !== null && (
-        <p role="alert" className="mt-3 text-sm text-offtune">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
