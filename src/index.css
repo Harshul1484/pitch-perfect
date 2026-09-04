@@ -5,6 +5,8 @@
   --color-muted: oklch(0.55 0.02 265);
   --color-accent: oklch(0.62 0.17 265);
   --color-surface: oklch(0.98 0.005 265);
+  --color-intune: oklch(0.65 0.16 150);
+  --color-offtune: oklch(0.70 0.15 65);
 }
 
 html {

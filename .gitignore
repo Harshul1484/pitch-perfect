@@ -9,3 +9,6 @@ coverage
 *.log
 .vite
 .gstack/
+.e2e-profile/
+test-results/
+playwright-report/

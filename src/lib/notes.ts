@@ -90,3 +90,34 @@ export function groupByOctave(notes: Note[] = ALL_NOTES): OctaveGroup[] {
     .map(([octave, octaveNotes]) => ({ octave, notes: octaveNotes }))
     .sort((a, b) => a.octave - b.octave);
 }
+
+export interface PitchMatch {
+  /** Nearest note to the detected frequency. */
+  note: Note;
+  /**
+   * Distance from that note in cents, -50 to +50. Negative is flat, positive
+   * sharp. A hundred cents is one semitone.
+   */
+  cents: number;
+}
+
+/** Within this many cents of centre counts as in tune. */
+export const IN_TUNE_CENTS = 10;
+
+/**
+ * Map a frequency onto the nearest piano note plus its deviation in cents.
+ * Returns null outside the 88-key range, where there is no note to name.
+ */
+export function nearestNote(frequency: number): PitchMatch | null {
+  if (!Number.isFinite(frequency) || frequency <= 0) return null;
+
+  const exact = A4_MIDI + 12 * Math.log2(frequency / A4_FREQUENCY);
+  const midi = Math.round(exact);
+
+  if (midi < LOWEST_MIDI || midi > HIGHEST_MIDI) return null;
+
+  return {
+    note: noteAt(midi),
+    cents: Math.round((exact - midi) * 100),
+  };
+}

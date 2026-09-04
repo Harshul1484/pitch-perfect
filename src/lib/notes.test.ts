@@ -5,6 +5,7 @@ import {
   LOWEST_MIDI,
   frequencyOf,
   groupByOctave,
+  nearestNote,
   noteAt,
 } from './notes';
 
@@ -75,5 +76,53 @@ describe('groupByOctave', () => {
     const total = groupByOctave().reduce((sum, group) => sum + group.notes.length, 0);
 
     expect(total).toBe(ALL_NOTES.length);
+  });
+});
+
+describe('nearestNote', () => {
+  it('names an exactly-tuned pitch with zero cents', () => {
+    expect(nearestNote(440)).toMatchObject({ cents: 0 });
+    expect(nearestNote(440)!.note.label).toBe('A4');
+    expect(nearestNote(261.6256)!.note.label).toBe('C4');
+  });
+
+  it('reports sharp as positive and flat as negative', () => {
+    // 445 Hz is a familiar orchestral A, about 20 cents above 440.
+    const sharp = nearestNote(445)!;
+    expect(sharp.note.label).toBe('A4');
+    expect(sharp.cents).toBeGreaterThan(0);
+    expect(sharp.cents).toBeCloseTo(20, 0);
+
+    const flat = nearestNote(435)!;
+    expect(flat.note.label).toBe('A4');
+    expect(flat.cents).toBeLessThan(0);
+  });
+
+  it('crosses to the neighbouring note past the halfway point', () => {
+    // A quarter tone above A4 sits nearer A#4.
+    expect(nearestNote(440 * 2 ** (0.51 / 12))!.note.label).toBe('A♯4');
+    expect(nearestNote(440 * 2 ** (0.49 / 12))!.note.label).toBe('A4');
+  });
+
+  it('never reports more than a half semitone off', () => {
+    for (let hz = 60; hz < 3000; hz += 7.3) {
+      const match = nearestNote(hz);
+      if (match) expect(Math.abs(match.cents)).toBeLessThanOrEqual(50);
+    }
+  });
+
+  it('names the violin open strings in standard tuning', () => {
+    expect(nearestNote(196.0)!.note.label).toBe('G3');
+    expect(nearestNote(293.66)!.note.label).toBe('D4');
+    expect(nearestNote(440)!.note.label).toBe('A4');
+    expect(nearestNote(659.26)!.note.label).toBe('E5');
+  });
+
+  it('rejects frequencies outside the piano range and nonsense input', () => {
+    expect(nearestNote(20)).toBeNull(); // below A0
+    expect(nearestNote(5000)).toBeNull(); // above C8
+    expect(nearestNote(0)).toBeNull();
+    expect(nearestNote(-440)).toBeNull();
+    expect(nearestNote(Number.NaN)).toBeNull();
   });
 });

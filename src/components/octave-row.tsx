@@ -5,9 +5,17 @@ interface OctaveRowProps {
   group: OctaveGroup;
   onPlay: (note: Note) => void;
   activeMidi: number | null;
+  detectedMidi: number | null;
+  detectedCents: number | null;
 }
 
-export function OctaveRow({ group, onPlay, activeMidi }: OctaveRowProps) {
+export function OctaveRow({
+  group,
+  onPlay,
+  activeMidi,
+  detectedMidi,
+  detectedCents,
+}: OctaveRowProps) {
   return (
     <section>
       <h2 className="mb-2 text-xs font-medium uppercase tracking-widest text-muted">
@@ -24,6 +32,7 @@ export function OctaveRow({ group, onPlay, activeMidi }: OctaveRowProps) {
             note={note}
             onPlay={onPlay}
             isActive={note.midi === activeMidi}
+            detectedCents={note.midi === detectedMidi ? detectedCents : null}
           />
         ))}
       </div>

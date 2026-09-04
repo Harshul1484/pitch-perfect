@@ -43,3 +43,44 @@ describe('NoteTile', () => {
     expect(screen.getByRole('button').className).toContain('ring-accent');
   });
 });
+
+describe('NoteTile while a note is being heard', () => {
+  it('shows cents off instead of the reference frequency', () => {
+    render(
+      <NoteTile note={middleC} onPlay={() => {}} isActive={false} detectedCents={-14} />,
+    );
+
+    expect(screen.getByText('-14¢')).toBeInTheDocument();
+    expect(screen.queryByText('261.6 Hz')).not.toBeInTheDocument();
+  });
+
+  it('rings green when in tune and amber when not', () => {
+    const { rerender } = render(
+      <NoteTile note={middleC} onPlay={() => {}} isActive={false} detectedCents={3} />,
+    );
+    expect(screen.getByRole('button').className).toContain('ring-intune');
+
+    rerender(
+      <NoteTile note={middleC} onPlay={() => {}} isActive={false} detectedCents={35} />,
+    );
+    expect(screen.getByRole('button').className).toContain('ring-offtune');
+  });
+
+  it('marks the heard tile as current for assistive tech', () => {
+    render(
+      <NoteTile note={middleC} onPlay={() => {}} isActive={false} detectedCents={0} />,
+    );
+
+    expect(screen.getByRole('button')).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('lets the heard state win over the click flash', () => {
+    render(
+      <NoteTile note={middleC} onPlay={() => {}} isActive detectedCents={2} />,
+    );
+
+    const className = screen.getByRole('button').className;
+    expect(className).toContain('ring-intune');
+    expect(className).not.toContain('ring-accent');
+  });
+});
