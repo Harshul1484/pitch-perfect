@@ -1,8 +1,10 @@
 # pitch
 
-A clean React + TypeScript single-page app starter. No product domain baked in —
-routing, styling, testing, and linting are wired up, and the example content is
-meant to be deleted.
+A dashboard of every musical note on an 88-key piano, A0 through C8. Click any
+tile to hear the pitch.
+
+Built on a clean React + TypeScript SPA setup — routing, styling, testing, and
+linting all wired up.
 
 ## Getting started
 
@@ -10,6 +12,28 @@ meant to be deleted.
 npm install
 npm run dev
 ```
+
+## How it works
+
+All 88 frequencies come from one formula in `src/lib/notes.ts`, in twelve-tone
+equal temperament anchored at A4 = 440 Hz:
+
+```
+frequency(midi) = 440 * 2 ** ((midi - 69) / 12)
+```
+
+MIDI numbers are the index because the octave arithmetic falls out of them
+(`floor(midi / 12) - 1`) and the piano range gets clean bounds: A0 = 21,
+C8 = 108.
+
+Playback is a Web Audio triangle oscillator with a 15 ms attack and an
+exponential decay (`src/lib/audio.ts`) — no audio files, no dependencies. The
+ramps exist because starting and stopping a gain node at full amplitude clicks
+audibly.
+
+Naturals are light tiles and accidentals dark, borrowing the piano keyboard's
+own encoding. Every tile is a real button with an `aria-label` naming the note
+and its frequency.
 
 ## Scripts
 
@@ -39,14 +63,18 @@ src/
 ├─ main.tsx      # mounts React
 ├─ router.tsx    # the route table — add pages here
 ├─ index.css     # Tailwind import + theme tokens
+├─ lib/
+│  ├─ notes.ts   # pitch math, the note table, octave grouping
+│  └─ audio.ts   # Web Audio playback
 ├─ routes/       # one file per page
 └─ components/   # reusable UI, knows nothing about routing
 ```
 
-`components/counter.tsx` and its test exist so `npm test` asserts against real
-rendered output. Both are disposable.
+`NoteTile` takes an `onPlay` callback rather than reaching for the audio module
+itself, so it stays a pure display component and needs no audio stubbing to
+test.
 
 ## Design notes
 
-See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design spec and
-the reasoning behind the toolchain choices.
+See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design specs
+and the reasoning behind the toolchain and audio choices.

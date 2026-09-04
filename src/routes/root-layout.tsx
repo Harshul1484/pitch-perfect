@@ -9,7 +9,7 @@ export function RootLayout() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-black/10">
-        <nav className="mx-auto flex max-w-3xl items-center gap-6 px-6 py-4">
+        <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4">
           <span className="font-semibold tracking-tight">pitch</span>
           <NavLink to="/" className={linkClass} end>
             Home
@@ -20,7 +20,7 @@ export function RootLayout() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto max-w-5xl px-6 py-12">
         <Outlet />
       </main>
     </div>
