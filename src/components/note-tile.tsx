@@ -1,3 +1,5 @@
+import { spokenLabel, swaraFor, type Notation } from '../lib/notation';
+import { Swara } from './swara';
 import type { Note } from '../lib/notes';
 
 interface NoteTileProps {
@@ -12,6 +14,9 @@ interface NoteTileProps {
   detectedCents?: number | null;
   /** Cents either side of centre that still count as in tune. */
   tolerance: number;
+  notation: Notation;
+  /** Pitch class shown as Sa. Ignored in Western notation. */
+  tonic: number;
 }
 
 /**
@@ -27,6 +32,8 @@ export function NoteTile({
   isActive,
   detectedCents = null,
   tolerance,
+  notation,
+  tonic,
 }: NoteTileProps) {
   const detected = detectedCents !== null;
   const inTune = detected && Math.abs(detectedCents) <= tolerance;
@@ -50,12 +57,16 @@ export function NoteTile({
     <button
       type="button"
       onClick={() => onPlay(note)}
-      aria-label={`Play ${note.label}, ${note.frequency.toFixed(2)} hertz`}
+      aria-label={`Play ${spokenLabel(note, notation, tonic)}, ${note.frequency.toFixed(2)} hertz`}
       aria-current={detected ? 'true' : undefined}
       className={`keycap keycap-pressable relative flex h-full w-full flex-col items-center justify-center gap-[3px] hover:border-engrave hover:bg-white ${surface} ${state}`}
     >
       <span className="text-[13px] font-medium leading-none tracking-tight tabular-nums">
-        {note.label}
+        {notation === 'sargam' ? (
+          <Swara swara={swaraFor(note.midi, tonic)} />
+        ) : (
+          note.label
+        )}
       </span>
 
       <span

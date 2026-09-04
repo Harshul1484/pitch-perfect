@@ -15,6 +15,8 @@ describe('NoteTile', () => {
         onPlay={() => {}}
         isActive={false}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 
@@ -29,6 +31,8 @@ describe('NoteTile', () => {
         onPlay={() => {}}
         isActive={false}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 
@@ -46,6 +50,8 @@ describe('NoteTile', () => {
         onPlay={onPlay}
         isActive={false}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 
@@ -61,12 +67,21 @@ describe('NoteTile', () => {
         onPlay={() => {}}
         isActive={false}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
     expect(screen.getByRole('button').className).not.toContain('keycap-pressed');
 
     rerender(
-      <NoteTile note={middleC} onPlay={() => {}} isActive tolerance={IN_TUNE_CENTS} />,
+      <NoteTile
+        note={middleC}
+        onPlay={() => {}}
+        isActive
+        tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
+      />,
     );
     expect(screen.getByRole('button').className).toContain('keycap-pressed');
   });
@@ -81,6 +96,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={-14}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 
@@ -96,6 +113,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={7}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 
@@ -110,6 +129,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={3}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
     expect(screen.getByRole('button').className).toContain('border-intune');
@@ -121,6 +142,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={35}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
     expect(screen.getByRole('button').className).toContain('border-signal');
@@ -135,6 +158,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={18}
         tolerance={10}
+        notation="western"
+        tonic={0}
       />,
     );
     expect(screen.getByRole('button').className).toContain('border-signal');
@@ -146,6 +171,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={18}
         tolerance={25}
+        notation="western"
+        tonic={0}
       />,
     );
     expect(screen.getByRole('button').className).toContain('border-intune');
@@ -159,6 +186,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive={false}
         detectedCents={0}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 
@@ -173,6 +202,8 @@ describe('NoteTile while a note is being heard', () => {
         isActive
         detectedCents={2}
         tolerance={IN_TUNE_CENTS}
+        notation="western"
+        tonic={0}
       />,
     );
 

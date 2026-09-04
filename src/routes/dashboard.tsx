@@ -3,7 +3,9 @@ import { ALL_NOTES, IN_TUNE_CENTS, nearestNote, type Note } from '../lib/notes';
 import { playFrequency } from '../lib/audio';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
+import type { Notation } from '../lib/notation';
 import { ControlRail } from '../components/control-rail';
+import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
 import { MetronomePanel } from '../components/metronome-panel';
 import { NowPlaying } from '../components/now-playing';
@@ -20,6 +22,9 @@ export function Dashboard() {
   const flashTimer = useRef<number | null>(null);
 
   const [bpm, setBpm] = useState(90);
+  const [notation, setNotation] = useState<Notation>('western');
+  /** Pitch class shown as Sa. C by default; movable, as sargam requires. */
+  const [tonic, setTonic] = useState(0);
 
   const { status, reading, error, start, stop } = usePitchDetection();
   const metronome = useMetronome(bpm, volume / 100);
@@ -65,7 +70,12 @@ export function Dashboard() {
             tuning instrument · {ALL_NOTES.length} keys · a4 = 440 hz
           </p>
         </div>
-        <p className="mono-label hidden sm:block">equal temperament · mpm detection</p>
+        <NotationSwitch
+          notation={notation}
+          onNotationChange={setNotation}
+          tonic={tonic}
+          onTonicChange={setTonic}
+        />
       </header>
 
       <div className="flex shrink-0 gap-2.5">
@@ -75,6 +85,8 @@ export function Dashboard() {
           frequency={reading?.frequency ?? null}
           error={error}
           tolerance={tolerance}
+          notation={notation}
+          tonic={tonic}
           onStart={start}
           onStop={stop}
         />
@@ -109,6 +121,8 @@ export function Dashboard() {
           </div>
 
           <Keybed
+            notation={notation}
+            tonic={tonic}
             onPlay={handlePlay}
             activeMidi={activeMidi}
             detectedMidi={match?.note.midi ?? null}

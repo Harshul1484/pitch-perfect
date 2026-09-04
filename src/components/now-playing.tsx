@@ -1,3 +1,5 @@
+import { swaraFor, type Notation } from '../lib/notation';
+import { Swara } from './swara';
 import type { PitchMatch } from '../lib/notes';
 import type { ListenStatus } from '../hooks/use-pitch-detection';
 import { CentsMeter } from './cents-meter';
@@ -8,6 +10,8 @@ interface NowPlayingProps {
   frequency: number | null;
   error: string | null;
   tolerance: number;
+  notation: Notation;
+  tonic: number;
   onStart: () => void;
   onStop: () => void;
 }
@@ -25,6 +29,8 @@ export function NowPlaying({
   frequency,
   error,
   tolerance,
+  notation,
+  tonic,
   onStart,
   onStop,
 }: NowPlayingProps) {
@@ -44,10 +50,20 @@ export function NowPlaying({
                 match === null ? 'text-hairline' : inTune ? 'text-intune' : 'text-signal'
               }`}
             >
-              {match?.note.label ?? '––'}
+              {match === null ? (
+                '––'
+              ) : notation === 'sargam' ? (
+                <Swara swara={swaraFor(match.note.midi, tonic)} />
+              ) : (
+                match.note.label
+              )}
             </span>
             <span className="h-3 font-mono text-[11px] leading-3 tabular-nums text-engrave">
-              {frequency === null ? '–––.– hz' : `${frequency.toFixed(1)} hz`}
+              {frequency === null
+                ? '–––.– hz'
+                : notation === 'sargam' && match !== null
+                  ? `${match.note.label} · ${frequency.toFixed(1)} hz`
+                  : `${frequency.toFixed(1)} hz`}
             </span>
           </div>
 

@@ -1,3 +1,4 @@
+import type { Notation } from '../lib/notation';
 import { ALL_NOTES, HIGHEST_MIDI, LOWEST_MIDI, type Note } from '../lib/notes';
 import { BrailleNumber } from './braille';
 import { NoteTile } from './note-tile';
@@ -15,6 +16,8 @@ function columnOf(midi: number): number {
 }
 
 interface KeybedProps {
+  notation: Notation;
+  tonic: number;
   onPlay: (note: Note) => void;
   activeMidi: number | null;
   detectedMidi: number | null;
@@ -32,6 +35,8 @@ interface KeybedProps {
  * lets the instrument fit one screen without scrolling.
  */
 export function Keybed({
+  notation,
+  tonic,
   onPlay,
   activeMidi,
   detectedMidi,
@@ -75,6 +80,8 @@ export function Keybed({
                 isActive={note.midi === activeMidi}
                 detectedCents={note.midi === detectedMidi ? detectedCents : null}
                 tolerance={tolerance}
+                notation={notation}
+                tonic={tonic}
               />
             </div>
           );
