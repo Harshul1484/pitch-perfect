@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ALL_NOTES, IN_TUNE_CENTS, nearestNote, type Note } from '../lib/notes';
+import {
+  ALL_NOTES,
+  IN_TUNE_CENTS,
+  frequencyOf,
+  nearestNote,
+  type Note,
+} from '../lib/notes';
 import { playFrequency } from '../lib/audio';
+import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
 import type { Notation } from '../lib/notation';
@@ -28,6 +35,8 @@ export function Dashboard() {
 
   const { status, reading, error, start, stop } = usePitchDetection();
   const metronome = useMetronome(bpm, volume / 100);
+  // Sa in octave 3, a comfortable register to drone under a violin.
+  const drone = useDrone(frequencyOf(tonic + 48), volume / 100);
 
   const match = useMemo(
     () => (reading ? nearestNote(reading.frequency) : null),
@@ -70,12 +79,7 @@ export function Dashboard() {
             tuning instrument · {ALL_NOTES.length} keys · a4 = 440 hz
           </p>
         </div>
-        <NotationSwitch
-          notation={notation}
-          onNotationChange={setNotation}
-          tonic={tonic}
-          onTonicChange={setTonic}
-        />
+        <NotationSwitch notation={notation} onNotationChange={setNotation} />
       </header>
 
       <div className="flex shrink-0 gap-2.5">
@@ -109,6 +113,10 @@ export function Dashboard() {
           onToleranceChange={setTolerance}
           sustain={sustain}
           onSustainChange={setSustain}
+          tonic={tonic}
+          onTonicChange={setTonic}
+          droneOn={drone.isOn}
+          onDroneToggle={drone.toggle}
         />
 
         {/* Key bed plate. */}

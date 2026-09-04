@@ -44,7 +44,7 @@ test('moving Sa renames every key', async () => {
 
   await page.getByRole('button', { name: 'sargam' }).click();
   // Sa on D, the scordatura case that motivated a movable tonic.
-  await page.getByLabel('pitch of Sa').selectOption('2');
+  await page.getByLabel('tonic').selectOption('2');
 
   await expect(page.getByRole('button', { name: /^Play Sa, D4,/ })).toBeVisible();
   // C is now komal Ni rather than Sa.

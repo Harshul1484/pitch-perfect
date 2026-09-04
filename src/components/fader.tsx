@@ -7,7 +7,7 @@ interface FaderProps {
 /** Scale ticks beside the travel, longer every fifth mark. */
 const TICKS = Array.from({ length: 21 }, (_, index) => index);
 
-const SLOT_HEIGHT = 132;
+const SLOT_HEIGHT = 104;
 const SLOT_PADDING = 10;
 /** Travel is inset from the slot ends so the thumb never meets the corners. */
 const TRAVEL = SLOT_HEIGHT - SLOT_PADDING * 2;

@@ -84,7 +84,7 @@ export function Knob({ label, value, min, max, step, onChange, format }: KnobPro
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onKeyDown={handleKeyDown}
-        className="keycap relative h-11 w-11 cursor-ns-resize touch-none rounded-full outline-none focus-visible:border-graphite"
+        className="keycap relative h-10 w-10 cursor-ns-resize touch-none rounded-full outline-none focus-visible:border-graphite"
       >
         {/* Fine concentric machining. */}
         <span className="pointer-events-none absolute inset-[5px] rounded-full border border-hairline/70" />
@@ -92,7 +92,7 @@ export function Knob({ label, value, min, max, step, onChange, format }: KnobPro
 
         {/* The indicator line. */}
         <span
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[15px] w-[1.5px] origin-bottom -translate-x-1/2 rounded-full bg-graphite"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[13px] w-[1.5px] origin-bottom -translate-x-1/2 rounded-full bg-graphite"
           style={{ transform: `translateX(-50%) translateY(-100%) rotate(${angle}deg)` }}
         />
       </div>
