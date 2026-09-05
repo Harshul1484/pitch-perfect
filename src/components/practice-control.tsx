@@ -61,7 +61,7 @@ export function PracticeControl({
   }, [open]);
 
   return (
-    <div ref={container} className="relative flex items-center gap-1 short:gap-0.5">
+    <div ref={container} className="relative flex items-stretch gap-1 short:gap-0.5">
       <button
         type="button"
         onClick={onToggle}
@@ -83,7 +83,7 @@ export function PracticeControl({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="practice settings"
-        className={`${KEY_OFF} px-1.5 py-1.5 font-mono text-[10px] leading-none text-engrave short:px-1 short:py-1`}
+        className={`${KEY_OFF} flex items-center px-1.5 font-mono text-[10px] leading-none text-engrave short:px-1`}
       >
         &#9662;
       </button>

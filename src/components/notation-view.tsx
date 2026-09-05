@@ -171,7 +171,7 @@ export function NotationView({
                 data-selected={selected(lineIndex, index) ? 'true' : undefined}
                 data-verdict={verdicts?.[flat]}
                 data-target={flat === targetIndex ? 'true' : undefined}
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-[14px] transition-colors duration-100 short:h-7 short:w-7 ${
+                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] text-[14px] transition-colors duration-100 short:h-7 short:w-7 ${
                   playing
                     ? 'bg-signal/15 text-signal'
                     : selected(lineIndex, index)
@@ -217,10 +217,18 @@ export function NotationView({
                       className="absolute -bottom-1.5 left-0 h-2 w-1/2 rounded-bl-[999px] border-b-2 border-l-2 border-signal/50"
                     />
                   ) : (
+                    /*
+                      Centre to centre. The arc joins the two notes that share
+                      a beat, so it starts under the middle of the one before
+                      and ends under the middle of this one — half a cell each
+                      side, plus the 8px caret slot between them. It used to
+                      run to this cell's right edge, which left it looking
+                      shunted one place along.
+                    */
                     <span
                       data-tie=""
                       aria-hidden="true"
-                      className="absolute -bottom-1.5 -left-2.5 h-2 w-[calc(100%+0.625rem)] rounded-b-[999px] border-b-2 border-l-2 border-r-2 border-signal/50"
+                      className="absolute -bottom-1.5 left-[calc(-50%-8px)] h-2 w-[calc(100%+8px)] rounded-b-[999px] border-b-2 border-l-2 border-r-2 border-signal/50"
                     />
                   ))}
               </button>,

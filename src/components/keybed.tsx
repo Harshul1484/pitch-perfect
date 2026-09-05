@@ -67,7 +67,7 @@ export function Keybed({
 
   return (
     <div
-      className="grid min-h-0 flex-1 grid-cols-12 gap-px overflow-hidden rounded-lg border border-hairline bg-hairline"
+      className="grid min-h-0 flex-1 grid-cols-12 gap-px overflow-hidden rounded-[4px] border border-hairline bg-hairline"
       style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
     >
       {cells.map((position) => {

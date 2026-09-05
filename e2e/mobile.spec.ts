@@ -93,7 +93,9 @@ for (const phone of PHONES) {
 
     test('the notes page fits on the screen', async ({ page }) => {
       await page.goto(`${BASE_URL}/notes`);
-      await expect(page.getByRole('heading', { name: 'notes', exact: true })).toBeVisible();
+      // Signed out, this page is the product's front door and heads with the
+      // product name rather than the section's.
+      await expect(page.getByRole('heading', { name: /perfect pitch/i })).toBeVisible();
 
       expectNothingCutOff(await audit(page));
     });

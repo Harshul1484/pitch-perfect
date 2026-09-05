@@ -45,7 +45,6 @@ import {
 import { NOTATIONS, TONICS, type Notation } from '../lib/notation';
 import { VOICES, type Voice } from '../lib/audio';
 import { usePreference } from '../hooks/use-preference';
-import { Segmented } from './segmented';
 import type { Composition } from '../hooks/use-compositions';
 import { useNotationPlayback } from '../hooks/use-notation-playback';
 import { NotationView } from './notation-view';
@@ -127,12 +126,13 @@ export function NotationEditor({
   const [saptak, setSaptak] = useState(0);
   const [tie, setTie] = useState(false);
   const [bpm, setBpm] = useState(80);
-  const [notation, setNotation] = usePreference<Notation>(
+  // Read only: both of these are set on the tuner and shared by the app.
+  const [notation] = usePreference<Notation>(
     'pitch.notation',
     'western',
     NOTATIONS,
   );
-  const [voice, setVoice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
+  const [voice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
   const [dirty, setDirty] = useState(false);
 
   /** Cut and copy keep their own clipboard, so notation survives round trips. */
@@ -598,13 +598,13 @@ export function NotationEditor({
         </PracticeControl>
 
         <span className="ml-auto flex flex-wrap items-center justify-end gap-3 short:gap-1.5">
-          <Segmented
-            label="notation"
-            value={notation}
-            options={NOTATIONS}
-            onChange={setNotation}
-          />
-          <Segmented label="voice" value={voice} options={VOICES} onChange={setVoice} />
+          {/*
+           * No notation or voice switch here. Both are one setting for the
+           * whole app, kept per person and set on the tuner; offering them
+           * twice invites the belief that this page has its own, which it does
+           * not. The piece's Sa stays, up beside the title — that one really
+           * does belong to the piece.
+           */}
           <span className="mono-label">{dirty ? 'saving' : 'saved'}</span>
         </span>
       </div>

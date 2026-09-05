@@ -7,6 +7,21 @@ function initialOf(name: string | null, email: string | null): string {
 }
 
 /**
+ * What to call someone in a header with no room in it.
+ *
+ * The first name, or the part of the address before the @. The full name was
+ * being cut off mid-word — "Harshul R…" — which is worse than not saying it:
+ * it costs the space and still fails to identify anyone. Anything genuinely
+ * long falls back to nothing, and the avatar carries it.
+ */
+function shortNameOf(name: string | null, email: string | null): string | null {
+  const first = name?.trim().split(/\s+/)[0] ?? email?.trim().split('@')[0] ?? null;
+  if (!first) return null;
+
+  return first.length <= 12 ? first : null;
+}
+
+/**
  * Sign in with Google, and who is signed in.
  *
  * Renders nothing when Firebase is not configured — an inert sign-in button
@@ -21,28 +36,44 @@ export function AccountControl({ status, user, error, signIn, signOut }: AuthSta
 
   if (status === 'signed-in' && user) {
     return (
-      <div className="flex items-center gap-2">
-        {user.photoURL ? (
-          <img
-            src={user.photoURL}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="h-6 w-6 rounded-full border border-hairline"
-          />
-        ) : (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full border border-hairline bg-panel font-mono text-[10px] text-graphite">
-            {initialOf(user.displayName, user.email)}
-          </span>
-        )}
+      <div className="flex items-center gap-2 short:gap-1.5">
+        {/*
+         * Squared, like everything else on the panel. A circle was the one
+         * round thing left in a language made of caps and hairlines, and it
+         * read as something pasted on from another app. The whole identity is
+         * on the title, for the times the first name is not enough.
+         */}
+        <span
+          className="flex items-center gap-1.5"
+          title={user.displayName ?? user.email ?? undefined}
+        >
+          {user.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="h-5 w-5 rounded-[2px] border border-hairline object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex h-5 w-5 items-center justify-center rounded-[2px] border border-hairline bg-panel font-mono text-[10px] text-graphite"
+            >
+              {initialOf(user.displayName, user.email)}
+            </span>
+          )}
 
-        <span className="mono-label max-w-[13ch] truncate normal-case">
-          {user.displayName ?? user.email}
+          {shortNameOf(user.displayName, user.email) !== null && (
+            <span className="mono-label normal-case short:hidden">
+              {shortNameOf(user.displayName, user.email)}
+            </span>
+          )}
         </span>
 
         <button
           type="button"
           onClick={signOut}
-          className="keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave hover:border-engrave hover:bg-white active:keycap-pressed"
+          className="keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave hover:border-engrave hover:bg-white active:keycap-pressed short:px-2 short:py-1 short:text-[9px]"
         >
           sign out
         </button>
@@ -74,9 +105,9 @@ export function AccountControl({ status, user, error, signIn, signOut }: AuthSta
 }
 
 /** Google's mark, drawn inline so no external request is needed. */
-function GoogleMark() {
+export function GoogleMark({ size = 11 }: { size?: number }) {
   return (
-    <svg width="11" height="11" viewBox="0 0 48 48" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.500h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"

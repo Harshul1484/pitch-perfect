@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { VOICES, type Voice } from '../lib/audio';
 import { TONICS } from '../lib/notation';
 import { Segmented } from './segmented';
-import { Knob } from './knob';
 
 interface ControlsPopoverProps {
   tolerance: number;
@@ -87,24 +86,31 @@ export function ControlsPopover(props: ControlsPopoverProps) {
           className="keycap absolute right-0 top-[calc(100%+8px)] z-30 flex w-[248px] gap-4 bg-tile p-4"
         >
           <div className="flex flex-1 flex-col gap-3">
-            <div className="flex gap-4">
-              <Knob
+            {/*
+             * Typed, not turned. These were knobs, which look like the panel
+             * they sit on but are a poor way to reach a particular number —
+             * you drag, overshoot, and drag back. Both of these are set to a
+             * value you already have in mind.
+             */}
+            <div className="flex gap-2">
+              <Field
                 label="tolerance"
+                unit="&cent;"
                 value={props.tolerance}
                 min={2}
                 max={30}
                 step={1}
                 onChange={props.onToleranceChange}
-                format={(cents) => `${cents}c`}
               />
-              <Knob
+              <Field
                 label="sustain"
-                value={props.sustain}
-                min={2}
-                max={30}
-                step={1}
-                onChange={props.onSustainChange}
-                format={(tenths) => `${(tenths / 10).toFixed(1)}s`}
+                unit="s"
+                /* Stored in tenths, entered in seconds. */
+                value={props.sustain / 10}
+                min={0.2}
+                max={3}
+                step={0.1}
+                onChange={(seconds) => props.onSustainChange(Math.round(seconds * 10))}
               />
             </div>
 
@@ -158,5 +164,58 @@ export function ControlsPopover(props: ControlsPopoverProps) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * One typed setting: a label, a number, and its unit.
+ *
+ * The value is clamped as it is typed, the same way the tempo field on the
+ * metronome behaves, so a setting can never be left outside the range it is
+ * allowed. A reading that is not a number at all — mid-way through typing
+ * "0.", say — is ignored rather than treated as zero.
+ */
+function Field({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-1 flex-col gap-1.5">
+      <span className="mono-label">{label}</span>
+      <span className="flex items-center gap-1">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)));
+          }}
+          aria-label={label}
+          className="keycap w-full min-w-0 bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
+        />
+        <span
+          aria-hidden="true"
+          className="font-mono text-[11px] leading-none text-engrave"
+        >
+          {unit}
+        </span>
+      </span>
+    </label>
   );
 }

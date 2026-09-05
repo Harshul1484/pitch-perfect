@@ -14,6 +14,7 @@ import { AccountControl } from '../components/account-control';
 import { ControlsPopover } from '../components/controls-popover';
 import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
+import { Mark } from '../components/mark';
 import { MAX_BPM, MIN_BPM } from '../lib/metronome';
 import { MetronomePanel } from '../components/metronome-panel';
 import { PracticeControl } from '../components/practice-control';
@@ -94,9 +95,12 @@ export function Dashboard() {
      * a phone held upright that frame is the rotated one.
      */
     <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
-      <header className="flex shrink-0 items-end justify-between gap-2 px-0.5">
-        <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em] short:text-[15px]">
-          pitch
+      <header className="flex shrink-0 items-center justify-between gap-2 px-0.5">
+        <h1 className="flex shrink-0 items-center gap-2 text-[18px] font-semibold leading-none tracking-[-0.02em] short:gap-1.5 short:text-[14px]">
+          <Mark />
+          {/* The name stands down on a phone; the mark still says whose app
+              this is, and the header has no width to spare. */}
+          <span className="short:sr-only">Perfect Pitch</span>
         </h1>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-1">
           <Link
