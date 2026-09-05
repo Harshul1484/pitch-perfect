@@ -2,6 +2,7 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BASE_URL } from '../playwright.config';
+import { audit, expectNothingCutOff } from './audit';
 
 /**
  * Quick Record, end to end.
@@ -16,13 +17,18 @@ import { BASE_URL } from '../playwright.config';
  */
 const PHRASE = [440, 440, 500, 500, 553, 553, 440];
 
-async function record(name: string, seconds: number) {
+async function record(
+  name: string,
+  seconds: number,
+  screen?: { width: number; height: number },
+) {
   const profile = resolve('.e2e-profile', name);
   mkdirSync(profile, { recursive: true });
 
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chrome',
     args: ['--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
+    ...(screen ? { viewport: screen, hasTouch: true, isMobile: true } : {}),
   });
   await context.grantPermissions(['microphone'], { origin: BASE_URL });
 
@@ -115,3 +121,24 @@ test('cannot record while the microphone is closed', async () => {
 
   await context.close();
 });
+
+/**
+ * The review is a panel hanging off the header, and on a phone there is far
+ * less below the header for it to hang into.
+ */
+for (const screen of [
+  { name: 'small android', width: 640, height: 360 },
+  { name: 'iphone 14', width: 844, height: 390 },
+]) {
+  test(`reviews a recording on a ${screen.name} without running off the screen`, async () => {
+    const { context, page } = await record(`recording-${screen.width}`, 4.2, screen);
+
+    const review = page.getByRole('group', { name: 'recording review' });
+    await expect(review).toBeVisible();
+    await expect(review.getByText('B4', { exact: true })).toBeVisible();
+
+    expectNothingCutOff(await audit(page));
+
+    await context.close();
+  });
+}

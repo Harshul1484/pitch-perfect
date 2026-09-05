@@ -37,11 +37,11 @@ export function Notes() {
     // to sign in, and two identical buttons would be a coin toss.
     return (
       <Shell>
-        <div className="keycap flex flex-col items-start gap-3 self-start bg-tile p-5">
-          <h2 className="text-[16px] font-semibold tracking-tight">
+        <div className="keycap flex flex-col items-start gap-3 self-start bg-tile p-5 short:gap-2 short:p-3">
+          <h2 className="text-[16px] font-semibold tracking-tight short:text-[14px]">
             Sign in to write notes
           </h2>
-          <p className="max-w-prose text-[13px] text-engrave">
+          <p className="max-w-prose text-[13px] text-engrave short:text-[11px]">
             Notes are saved to your account so they follow you between devices, which
             needs a sign-in. The tuner works without one.
           </p>
@@ -53,8 +53,8 @@ export function Notes() {
 
   return (
     <Shell auth={auth}>
-      <div className="flex min-h-0 flex-1 gap-2.5">
-        <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3">
+      <div className="flex min-h-0 flex-1 gap-2.5 short:gap-1.5">
+        <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[132px] short:gap-1.5 short:p-2">
           <div className="flex items-center justify-between">
             <span className="mono-label">pieces</span>
             <button
@@ -109,7 +109,7 @@ export function Notes() {
             }}
           />
         ) : (
-          <div className="keycap flex min-h-0 flex-1 items-start bg-tile p-3">
+          <div className="keycap flex min-h-0 min-w-0 flex-1 items-start bg-tile p-3">
             <p className="mono-label">select a piece, or make a new one</p>
           </div>
         )}
@@ -126,16 +126,16 @@ function Shell({
   auth?: ReturnType<typeof useAuth>;
 }) {
   return (
-    <div className="flex h-screen flex-col gap-2.5 overflow-hidden p-4">
-      <header className="flex shrink-0 items-end justify-between px-0.5">
+    <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-2 px-0.5">
         <div className="flex items-center gap-3">
-          <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em]">
+          <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em] short:text-[15px]">
             notes
           </h1>
           <Link
             to="/"
             className={
-              'keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed'
+              'keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed short:px-2 short:py-1 short:text-[9px]'
             }
           >
             &larr; tuner

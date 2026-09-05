@@ -81,22 +81,26 @@ export function Dashboard() {
   );
 
   return (
-    /* One screen, no scrolling: the key bed takes whatever height is left. */
-    <div className="flex h-screen flex-col gap-2.5 overflow-hidden p-4">
-      <header className="flex shrink-0 items-end justify-between px-0.5">
-        <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em]">
+    /*
+     * One screen, no scrolling: the key bed takes whatever height is left.
+     * Height comes from the frame (#root) rather than the viewport, because on
+     * a phone held upright that frame is the rotated one.
+     */
+    <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
+      <header className="flex shrink-0 items-end justify-between gap-2 px-0.5">
+        <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em] short:text-[15px]">
           pitch
         </h1>
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-1.5">
           <Link
             to="/notes"
             className={
-              'keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed'
+              'keycap keycap-pressable shrink-0 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed short:px-2 short:py-1 short:text-[9px]'
             }
           >
             notes &rarr;
           </Link>
-          <span aria-hidden="true" className="h-4 w-px bg-hairline" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
           <NotationSwitch notation={notation} onNotationChange={setNotation} />
           <RecordControl
             isRecording={recorder.isRecording}
@@ -132,13 +136,13 @@ export function Dashboard() {
             voice={voice}
             onVoiceChange={setVoice}
           />
-          <span aria-hidden="true" className="h-4 w-px bg-hairline" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
           <AccountControl {...auth} />
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-2.5">
-        <div className="flex min-h-0 shrink-0 flex-col gap-2.5">
+      <div className="flex min-h-0 flex-1 gap-2.5 short:gap-1.5">
+        <div className="flex min-h-0 shrink-0 flex-col gap-2.5 short:gap-1.5">
           <TunerColumn
             status={status}
             match={match}

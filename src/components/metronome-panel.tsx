@@ -25,7 +25,7 @@ export function MetronomePanel({
   micOpen,
 }: MetronomePanelProps) {
   return (
-    <div className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3">
+    <div className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[126px] short:gap-1 short:p-1.5">
       <div className="flex h-3 items-center justify-between">
         <span className="mono-label">metronome</span>
         <span className="mono-label">4/4</span>
@@ -40,16 +40,16 @@ export function MetronomePanel({
           value={bpm}
           onChange={(event) => onBpmChange(clampBpm(Number(event.target.value)))}
           aria-label="tempo"
-          className="keycap w-[68px] bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
+          className="keycap w-[68px] bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite short:w-[52px] short:py-1 short:text-[11px]"
         />
         <span className="mono-label">bpm</span>
       </label>
 
-      <div className="flex flex-1 items-center gap-3">
-        <div className="flex flex-1 flex-col gap-2">
+      <div className="flex flex-1 items-center gap-3 short:gap-2">
+        <div className="flex flex-1 flex-col gap-2 short:gap-1">
           {/* Beat lights. The downbeat is taller and turns signal red. */}
           <div
-            className="flex h-5 items-end gap-1.5"
+            className="flex h-5 items-end gap-1.5 short:h-3.5"
             role="status"
             aria-live="off"
             aria-label={
@@ -68,7 +68,7 @@ export function MetronomePanel({
                   data-beat={index}
                   data-lit={lit ? 'true' : 'false'}
                   className={`flex-1 rounded-[2px] border transition-colors duration-75 ${
-                    accent ? 'h-5' : 'h-3.5'
+                    accent ? 'h-5 short:h-3.5' : 'h-3.5 short:h-2.5'
                   } ${
                     lit
                       ? accent
@@ -85,7 +85,7 @@ export function MetronomePanel({
             type="button"
             onClick={onToggle}
             aria-pressed={isRunning}
-            className={`keycap keycap-pressable flex h-9 items-center justify-center text-[12px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed ${
+            className={`keycap keycap-pressable flex h-9 items-center justify-center text-[12px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed short:h-7 short:text-[11px] ${
               isRunning
                 ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
                 : 'hover:bg-white'
@@ -97,7 +97,7 @@ export function MetronomePanel({
       </div>
 
       <p
-        className={`mono-label h-3 leading-3 ${
+        className={`mono-label h-3 leading-3 short:h-2.5 short:leading-[10px] ${
           isRunning && micOpen ? 'text-signal' : 'text-engrave/0'
         }`}
       >

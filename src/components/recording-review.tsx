@@ -66,7 +66,7 @@ export function RecordingReview({
     <div
       role="group"
       aria-label="recording review"
-      className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3"
+      className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[152px] short:gap-1.5 short:p-2"
     >
       <div className="flex items-center justify-between">
         <span className="mono-label">recording</span>
@@ -81,7 +81,7 @@ export function RecordingReview({
         <>
           <div className="flex items-baseline gap-1.5">
             <span
-              className={`text-[26px] font-semibold leading-none tabular-nums ${
+              className={`text-[26px] font-semibold leading-none tabular-nums short:text-[20px] ${
                 share !== null && share >= 0.8 ? 'text-intune' : 'text-graphite'
               }`}
             >
@@ -102,7 +102,7 @@ export function RecordingReview({
             </span>
           )}
 
-          <div className="flex max-h-[190px] min-h-0 flex-col gap-px overflow-y-auto border-y border-hairline-soft py-1">
+          <div className="flex max-h-[190px] min-h-0 flex-col gap-px overflow-y-auto border-y border-hairline-soft py-1 short:max-h-[92px]">
             {events.map((event, index) => {
               const note = noteAt(event.midi);
               const token = tokenFromMidi(event.midi, tonic);

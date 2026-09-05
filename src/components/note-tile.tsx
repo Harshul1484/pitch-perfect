@@ -121,20 +121,20 @@ export function NoteTile({
         </>
       )}
 
-      <span className="relative flex items-baseline gap-1">
+      <span className="relative flex items-baseline gap-1 short:gap-0.5">
         {notation === 'sargam' ? (
-          <Swara swara={swaraFor(note.midi, tonic)} className="text-[14px]" />
+          <Swara swara={swaraFor(note.midi, tonic)} className="text-[14px] short:text-[11px]" />
         ) : (
-          <span className="text-[14px] leading-none tracking-tight">
+          <span className="text-[14px] leading-none tracking-tight short:text-[11px]">
             {note.name}
-            <sup className="ml-px text-[9px] font-medium tabular-nums opacity-70">
+            <sup className="ml-px text-[9px] font-medium tabular-nums opacity-70 short:text-[8px]">
               {note.octave}
             </sup>
           </span>
         )}
 
         {detected && (
-          <span className="font-mono text-[9px] leading-none tabular-nums">
+          <span className="font-mono text-[9px] leading-none tabular-nums short:text-[8px]">
             {detectedCents > 0 ? '+' : ''}
             {detectedCents}
           </span>

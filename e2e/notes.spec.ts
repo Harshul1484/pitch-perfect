@@ -1,7 +1,8 @@
 import { chromium, expect, test, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BASE_URL } from '../playwright.config';
+import { audit, expectNothingCutOff } from './audit';
 
 /**
  * The notes feature, end to end against the Firebase emulators.
@@ -19,13 +20,20 @@ const NOTES_URL = `${BASE_URL}/notes?emulator=1`;
 
 async function openSignedIn(
   name: string,
+  screen?: { width: number; height: number },
 ): Promise<{ context: import('@playwright/test').BrowserContext; page: Page }> {
+  // A fresh profile every run. These tests sign in, so a profile left over
+  // from last time comes back already signed in — and then the sign-in button
+  // this waits for never appears. The session still persists within a run,
+  // which is what the reload tests need.
   const profile = resolve('.e2e-profile', name);
+  rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
 
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chrome',
     args: ['--autoplay-policy=no-user-gesture-required'],
+    ...(screen ? { viewport: screen, hasTouch: true, isMobile: true } : {}),
   });
 
   const page = await context.newPage();
@@ -315,3 +323,40 @@ test('drags across the page to select, then replaces the selection', async () =>
 
   await context.close();
 });
+
+/**
+ * The editor on a phone.
+ *
+ * This is the densest screen in the app — a list of pieces, a title row, the
+ * written page, a toolbar and a twelve-key keyboard — so it is the one most
+ * likely to push something off the edge. Signed in against the emulator,
+ * because the editor only exists for a real piece.
+ */
+for (const screen of [
+  { name: 'small android', width: 640, height: 360 },
+  { name: 'iphone 14', width: 844, height: 390 },
+]) {
+  test(`writes on a ${screen.name} without anything falling off the screen`, async () => {
+    const { context, page } = await openSignedIn(`notes-mobile-${screen.width}`, screen);
+
+    await page.getByRole('button', { name: 'new' }).click();
+    const written = page.getByRole('group', { name: 'written notation' });
+    await expect(written).toBeVisible();
+
+    // A full bar and a bit, so the page has real content on it.
+    for (const key of ['S', 'R', 'G', 'm', '|', 'P', 'D', 'N', 'S']) {
+      await page.keyboard.press(key);
+    }
+    await expect(written.locator('[data-bar]')).toHaveCount(1);
+
+    expectNothingCutOff(await audit(page));
+
+    // Both notations, since the swara marks and the Western names are set
+    // differently and either could be the one that overflows.
+    await page.getByRole('button', { name: 'sargam' }).click();
+    await expect(written.getByText('Sa', { exact: true }).first()).toBeVisible();
+    expectNothingCutOff(await audit(page));
+
+    await context.close();
+  });
+}

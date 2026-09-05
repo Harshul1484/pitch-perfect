@@ -1,6 +1,30 @@
 @import 'tailwindcss';
 
 /*
+ * The instrument is a landscape panel: nine octave rows by twelve chromatic
+ * columns, with the readout standing beside it. That shape cannot be folded
+ * into a portrait phone without either shrinking the keys past the point of
+ * being playable or hiding half the app, so on a phone held upright the whole
+ * page is turned on its side instead (see the orientation block below).
+ *
+ * `short` is the variant everything else keys off. A landscape phone is
+ * 360–430px tall, which is roughly half a laptop; the breakpoint is on height
+ * rather than width because height is what actually runs out.
+ *
+ * The second query is the same question asked of a phone held upright. Media
+ * queries only ever see the device, never the quarter turn applied below, so
+ * there the layout's height is the viewport's *width*.
+ */
+@custom-variant short {
+  @media (max-height: 520px) {
+    @slot;
+  }
+  @media (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
+    @slot;
+  }
+}
+
+/*
  * Design language: a machined instrument panel. Surfaces are matte white and
  * light grey, separated by thin graphite hairlines rather than shadows.
  * Elevation comes from surface change and border weight, never from blur.
@@ -36,11 +60,13 @@
 }
 
 html {
+  height: 100%;
   color-scheme: light;
 }
 
 body {
   margin: 0;
+  height: 100%;
   /* A cool studio gradient, so the instrument sits on a surface rather than
      floating on flat colour. */
   background-color: #dfe3e6;
@@ -51,6 +77,63 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.01em;
+  /* One screen, no scrolling: nothing here should rubber-band or bounce. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* Keeps pinch-zoom but drops the double-tap zoom delay, so keys respond at
+     once when they are played in quick succession. */
+  touch-action: manipulation;
+}
+
+/*
+ * The app frame.
+ *
+ * Everything inside sizes itself against this box, never against the viewport
+ * directly: `h-full` rather than `h-screen`, and `--app-h` / `--app-w` where a
+ * measurement is genuinely needed. That indirection is what lets the rotation
+ * below hand the app a frame whose axes are swapped.
+ */
+#root {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  --app-w: 100vw;
+  --app-h: 100dvh;
+  /* Keep clear of notches and home indicators. */
+  padding:
+    env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/*
+ * Held upright, a phone gets the page rotated a quarter turn rather than a
+ * squeezed-in portrait layout or a "please rotate" wall.
+ *
+ * The frame is given the viewport's dimensions swapped and turned about its
+ * top-left corner: translateY(-100%) lifts it by its own height first, so the
+ * quarter turn drops it back exactly over the screen.
+ *
+ * Guarded on a coarse pointer so that a narrow, tall *desktop* window — which
+ * is nobody's phone — is left the right way up.
+ */
+@media (orientation: portrait) and (pointer: coarse) and (max-width: 900px) {
+  #root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100dvh;
+    height: 100dvw;
+    --app-w: 100dvh;
+    --app-h: 100dvw;
+    transform-origin: top left;
+    transform: rotate(90deg) translateY(-100%);
+    /* The insets rotate with the page: what the device calls its top edge is
+       now the left of the layout, and so on round. */
+    padding:
+      env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)
+      env(safe-area-inset-top);
+  }
 }
 
 /*
@@ -98,6 +181,24 @@ body {
   letter-spacing: 0.14em;
   text-transform: lowercase;
   color: var(--color-engrave);
+}
+
+/* On a phone the same labels have to give up a little more. Both queries, for
+   the same reason the `short` variant needs both. */
+@media (max-height: 520px), (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
+  .mono-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+}
+
+/*
+ * A panel that must never clip what it holds: it takes the height it is given
+ * and lets its own content scroll if the screen is too small for it.
+ */
+@utility scroll-y {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

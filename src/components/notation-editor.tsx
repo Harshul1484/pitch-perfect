@@ -349,8 +349,8 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
   const selectedRange = selection && !isEmpty(selection) ? ordered(selection) : null;
 
   return (
-    <div className="keycap flex min-h-0 flex-1 flex-col gap-3 bg-tile p-3">
-      <div className="flex items-center gap-2">
+    <div className="keycap flex min-h-0 min-w-0 flex-1 flex-col gap-3 bg-tile p-3 short:gap-2 short:p-2">
+      <div className="flex items-center gap-2 short:gap-1.5">
         <input
           defaultValue={composition.title}
           onChange={(event) => void onSave(id, { title: event.target.value })}
@@ -360,7 +360,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
             if (event.key === 'Enter') event.currentTarget.blur();
           }}
           aria-label="title"
-          className="keycap flex-1 bg-panel px-2.5 py-1.5 text-[13px] outline-none focus:border-graphite"
+          className="keycap w-0 flex-1 bg-panel px-2.5 py-1.5 text-[13px] outline-none focus:border-graphite short:py-1 short:text-[12px]"
           placeholder="untitled"
         />
 
@@ -416,7 +416,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
         }}
       />
 
-      <div className="flex items-center gap-2 border-t border-hairline-soft pt-2">
+      <div className="flex flex-wrap items-center gap-2 border-t border-hairline-soft pt-2 short:gap-1.5 short:pt-1.5">
         <button
           type="button"
           onClick={playback.isPlaying ? playback.stop : playback.play}
@@ -467,7 +467,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
           />
         </label>
 
-        <span className="ml-auto flex items-center gap-3">
+        <span className="ml-auto flex flex-wrap items-center justify-end gap-3 short:gap-1.5">
           <Segmented
             label="notation"
             value={notation}

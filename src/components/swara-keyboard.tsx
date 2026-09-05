@@ -51,7 +51,7 @@ export function SwaraKeyboard({
   onBackspace,
 }: SwaraKeyboardProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 short:gap-1">
       <div className="flex items-center justify-between">
         <span className="mono-label">{notation === 'western' ? 'notes' : 'swaras'}</span>
 
@@ -74,7 +74,7 @@ export function SwaraKeyboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-1">
+      <div className="grid grid-cols-12 gap-1 short:gap-0.5">
         {DEGREE_LETTERS.map((letter, degree) => {
           const swara = { ...swaraOfDegree(degree), saptak };
 
@@ -88,7 +88,7 @@ export function SwaraKeyboard({
                   ? `insert ${NOTE_NAMES[(tonic + degree) % 12]}`
                   : `insert ${swara.komal ? 'komal ' : ''}${swara.tivra ? 'tivra ' : ''}${swara.text}`
               }
-              className={`${KEY} flex aspect-square flex-col items-center justify-center gap-1 ${
+              className={`${KEY} flex aspect-square flex-col items-center justify-center gap-1 short:aspect-auto short:h-[34px] short:gap-0.5 ${
                 swara.komal || swara.tivra ? 'bg-cap-dark bg-none' : ''
               }`}
             >
@@ -107,7 +107,7 @@ export function SwaraKeyboard({
         })}
       </div>
 
-      <div className="flex gap-1">
+      <div className="flex gap-1 short:gap-0.5">
         <button
           type="button"
           onClick={onTieToggle}

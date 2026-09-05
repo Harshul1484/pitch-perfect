@@ -42,12 +42,12 @@ export function TunerColumn({
   const tone = match === null ? 'text-hairline' : inTune ? 'text-intune' : 'text-signal';
 
   return (
-    <div className="keycap flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3">
-      <div className="flex flex-col gap-1.5">
+    <div className="keycap relative flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 short:w-[126px] short:gap-1 short:p-1.5">
+      <div className="flex flex-col gap-1.5 short:gap-1">
         <span className="mono-label">note</span>
 
         <span
-          className={`flex h-[46px] items-center text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 ${tone}`}
+          className={`flex h-[46px] items-center text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 short:h-[28px] short:text-[24px] ${tone}`}
         >
           {match === null ? (
             '––'
@@ -58,7 +58,7 @@ export function TunerColumn({
           )}
         </span>
 
-        <span className="font-mono text-[11px] leading-3 tabular-nums text-engrave">
+        <span className="font-mono text-[11px] leading-3 tabular-nums text-engrave short:text-[9px]">
           {frequency === null
             ? '–––.– hz'
             : notation === 'sargam' && match !== null
@@ -67,7 +67,7 @@ export function TunerColumn({
         </span>
 
         {/* The reading in words, which the bar alone cannot give. */}
-        <span className={`font-mono text-[12px] tabular-nums ${tone}`}>
+        <span className={`font-mono text-[12px] tabular-nums short:text-[10px] ${tone}`}>
           {match === null
             ? 'listening'
             : inTune
@@ -78,12 +78,24 @@ export function TunerColumn({
         </span>
       </div>
 
-      <span aria-hidden="true" className="h-px w-full shrink-0 bg-hairline-soft" />
+      {/*
+       * When the microphone could not be opened there is nothing to meter, and
+       * on a phone the message needs the room the meter would take. Everywhere
+       * else there is space for both, so both stay.
+       */}
+      <div className={error === null ? 'contents' : 'contents short:hidden'}>
+        <span aria-hidden="true" className="h-px w-full shrink-0 bg-hairline-soft" />
 
-      <PitchMeter cents={match?.cents ?? null} tolerance={tolerance} />
+        <PitchMeter cents={match?.cents ?? null} tolerance={tolerance} />
+      </div>
 
-      <div className="flex shrink-0 flex-col gap-2">
-        <span className="flex h-3 items-center gap-1.5">
+      <div className="flex shrink-0 flex-col gap-2 short:gap-1">
+        {/*
+         * On a phone this moves out of the column and into the free corner
+         * beside the "note" label: the same one indicator, sited where there
+         * is room for it, rather than a second copy of it.
+         */}
+        <span className="flex h-3 items-center gap-1.5 short:absolute short:right-1.5 short:top-1.5">
           <span
             aria-hidden="true"
             className={`h-1.5 w-1.5 rounded-[1px] transition-colors duration-200 ${
@@ -97,7 +109,7 @@ export function TunerColumn({
           type="button"
           onClick={live || starting ? onStop : onStart}
           disabled={starting}
-          className={`keycap keycap-pressable flex h-10 items-center justify-center text-[13px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed disabled:cursor-wait ${
+          className={`keycap keycap-pressable flex h-10 items-center justify-center text-[13px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed disabled:cursor-wait short:h-8 short:text-[12px] ${
             live
               ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
               : 'hover:bg-white'

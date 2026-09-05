@@ -33,18 +33,18 @@ export function PitchMeter({ cents, tolerance }: PitchMeterProps) {
           &#9837;
         </span>
 
-        <div className="relative h-11 min-w-0 flex-1 overflow-hidden rounded-md border border-hairline bg-panel">
+        <div className="relative h-11 min-w-0 flex-1 overflow-hidden rounded-md border border-hairline bg-panel short:h-7">
           {/* Ticks along both edges. */}
           {(['top-0', 'bottom-0'] as const).map((edge) => (
             <span
               key={edge}
               aria-hidden="true"
-              className={`absolute inset-x-0 flex h-2.5 justify-between px-1.5 ${edge}`}
+              className={`absolute inset-x-0 flex h-2.5 justify-between px-1.5 short:h-1.5 ${edge}`}
             >
               {TICKS.map((tick) => (
                 <span
                   key={tick}
-                  className={`w-px bg-engrave/40 ${tick % 5 === 0 ? 'h-2.5' : 'h-1.5'} ${
+                  className={`w-px bg-engrave/40 ${tick % 5 === 0 ? 'h-2.5 short:h-1.5' : 'h-1.5 short:h-1'} ${
                     edge === 'bottom-0' ? 'self-end' : ''
                   }`}
                 />
@@ -62,7 +62,7 @@ export function PitchMeter({ cents, tolerance }: PitchMeterProps) {
           {/* Dead centre. */}
           <span
             aria-hidden="true"
-            className="absolute inset-y-2.5 left-1/2 w-px -translate-x-1/2 bg-graphite/25"
+            className="absolute inset-y-2.5 left-1/2 w-px -translate-x-1/2 bg-graphite/25 short:inset-y-1.5"
           />
 
           {/* The needle. */}
