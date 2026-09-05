@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAudioContext, scheduleTone } from '../lib/audio';
 import type { Line } from '../lib/composition';
 import { frequencyOf } from '../lib/notes';
-import { beatAt, beatSeconds, buildSchedule } from '../lib/playback';
+import { beatAt, beatSeconds, buildSchedule, tokenAtBeat } from '../lib/playback';
 
 export interface NotationPlayback {
   isPlaying: boolean;
-  /** Token index currently sounding, which is also the beat number. */
-  beat: number | null;
+  /** Index of the token being played, across the whole piece. */
+  token: number | null;
   play: () => void;
   stop: () => void;
 }
@@ -31,7 +31,7 @@ export function useNotationPlayback(
   volume: number,
 ): NotationPlayback {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [beat, setBeat] = useState<number | null>(null);
+  const [token, setToken] = useState<number | null>(null);
 
   const frameRef = useRef<number | null>(null);
   const stopAtRef = useRef<(() => void) | null>(null);
@@ -43,7 +43,7 @@ export function useNotationPlayback(
     }
     stopAtRef.current?.();
     stopAtRef.current = null;
-    setBeat(null);
+    setToken(null);
     setIsPlaying(false);
   }, []);
 
@@ -52,17 +52,20 @@ export function useNotationPlayback(
     if (!ctx) return;
     if (ctx.state === 'suspended') void ctx.resume();
 
-    const { events, totalBeats } = buildSchedule(lines, tonic);
+    const schedule = buildSchedule(lines, tonic);
+    const { totalBeats } = schedule;
     if (totalBeats === 0) return;
 
     const perBeat = beatSeconds(bpm);
     const startedAt = ctx.currentTime + LEAD_IN;
 
-    for (const event of events) {
+    for (const item of schedule.placed) {
+      if (item.midi === null) continue;
+
       scheduleTone(
-        frequencyOf(event.midi),
-        startedAt + event.tokenIndex * perBeat,
-        Math.max(event.beats * perBeat - GAP_SECONDS, 0.05),
+        frequencyOf(item.midi),
+        startedAt + item.startBeat * perBeat,
+        Math.max(item.beats * perBeat - GAP_SECONDS, 0.04),
         volume,
       );
     }
@@ -77,7 +80,7 @@ export function useNotationPlayback(
         return;
       }
 
-      setBeat(current);
+      setToken(tokenAtBeat(schedule, current));
       frameRef.current = requestAnimationFrame(follow);
     };
 
@@ -86,5 +89,5 @@ export function useNotationPlayback(
 
   useEffect(() => stop, [stop]);
 
-  return { isPlaying, beat, play, stop };
+  return { isPlaying, token, play, stop };
 }

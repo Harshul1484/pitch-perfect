@@ -1,13 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  appendLine,
-  appendToken,
-  deleteLast,
   letterToDegree,
   parseNotation,
   serializeLines,
   type Line,
+  type Token,
 } from '../lib/composition';
+import {
+  breakLine,
+  caretAtEnd,
+  deleteAt,
+  deleteBefore,
+  insertToken,
+  moveDown,
+  moveLeft,
+  moveLineEnd,
+  moveLineStart,
+  moveRight,
+  moveUp,
+  type Caret,
+} from '../lib/caret';
 import { TONICS } from '../lib/notation';
 import type { Composition } from '../hooks/use-compositions';
 import { useNotationPlayback } from '../hooks/use-notation-playback';
@@ -31,12 +43,16 @@ interface NotationEditorProps {
  *
  * The caller keys this on the composition id, so switching pieces remounts it
  * and the notation state initialises straight from props. That avoids an
- * effect that copies props into state, which would also race the live
- * Firestore snapshot and could overwrite what is being typed.
+ * effect copying props into state, which would also race the live Firestore
+ * snapshot and could overwrite what is being typed.
  */
 export function NotationEditor({ composition, onSave, onDelete }: NotationEditorProps) {
   const [lines, setLines] = useState<Line[]>(() => parseNotation(composition.notation));
+  const [caret, setCaret] = useState<Caret>(() =>
+    caretAtEnd(parseNotation(composition.notation)),
+  );
   const [saptak, setSaptak] = useState(0);
+  const [tie, setTie] = useState(false);
   const [bpm, setBpm] = useState(80);
   const [dirty, setDirty] = useState(false);
 
@@ -55,20 +71,36 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
     return () => window.clearTimeout(timer);
   }, [lines, dirty, id, onSave]);
 
-  const edit = useCallback((next: (current: Line[]) => Line[]) => {
-    setLines(next);
-    setDirty(true);
-  }, []);
-
-  const addNote = useCallback(
-    (degree: number) =>
-      edit((current) => appendToken(current, { kind: 'note', degree, saptak })),
-    [edit, saptak],
+  /** Apply an edit that moves the caret with it. */
+  const apply = useCallback(
+    (edit: (lines: Line[], caret: Caret) => { lines: Line[]; caret: Caret }) => {
+      setLines((currentLines) => {
+        const result = edit(currentLines, caret);
+        setCaret(result.caret);
+        return result.lines;
+      });
+      setDirty(true);
+    },
+    [caret],
   );
 
-  const addSustain = useCallback(
-    () => edit((current) => appendToken(current, { kind: 'sustain' })),
-    [edit],
+  const insert = useCallback(
+    (token: Token) => apply((l, c) => insertToken(l, c, token)),
+    [apply],
+  );
+
+  const addNote = useCallback(
+    (degree: number) => {
+      insert(
+        tie
+          ? { kind: 'note', degree, saptak, grouped: true }
+          : { kind: 'note', degree, saptak },
+      );
+      // A tie joins one note to the beat before it; it is not a mode you stay
+      // in, or every following note would pile into the same beat.
+      setTie(false);
+    },
+    [insert, saptak, tie],
   );
 
   // Typing shortcuts, so the on-screen keyboard teaches the letters and then
@@ -79,19 +111,50 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
 
+      const moves: Record<string, (l: Line[], c: Caret) => Caret> = {
+        ArrowLeft: moveLeft,
+        ArrowRight: moveRight,
+        ArrowUp: moveUp,
+        ArrowDown: moveDown,
+        Home: moveLineStart,
+        End: moveLineEnd,
+      };
+
+      const move = moves[event.key];
+      if (move) {
+        event.preventDefault();
+        setCaret((current) => move(lines, current));
+        return;
+      }
+
       if (event.key === 'Backspace') {
         event.preventDefault();
-        edit(deleteLast);
+        apply(deleteBefore);
+        return;
+      }
+      if (event.key === 'Delete') {
+        event.preventDefault();
+        apply(deleteAt);
         return;
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        edit(appendLine);
+        apply(breakLine);
         return;
       }
       if (event.key === '-') {
         event.preventDefault();
-        addSustain();
+        insert({ kind: 'sustain' });
+        return;
+      }
+      if (event.key === '|' || event.key === '/') {
+        event.preventDefault();
+        insert({ kind: 'bar' });
+        return;
+      }
+      if (event.key === '~') {
+        event.preventDefault();
+        setTie((value) => !value);
         return;
       }
 
@@ -104,7 +167,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [addNote, addSustain, edit]);
+  }, [addNote, apply, insert, lines]);
 
   return (
     <div className="keycap flex min-h-0 flex-1 flex-col gap-3 bg-tile p-3">
@@ -138,7 +201,12 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
         </button>
       </div>
 
-      <NotationView lines={lines} playingIndex={playback.beat} />
+      <NotationView
+        lines={lines}
+        playingIndex={playback.token}
+        caret={caret}
+        onCaretChange={setCaret}
+      />
 
       <div className="flex items-center gap-2 border-t border-hairline-soft pt-2">
         <button
@@ -173,10 +241,13 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
       <SwaraKeyboard
         saptak={saptak}
         onSaptakChange={setSaptak}
+        tie={tie}
+        onTieToggle={() => setTie((value) => !value)}
         onNote={addNote}
-        onSustain={addSustain}
-        onNewLine={() => edit(appendLine)}
-        onBackspace={() => edit(deleteLast)}
+        onSustain={() => insert({ kind: 'sustain' })}
+        onBar={() => insert({ kind: 'bar' })}
+        onNewLine={() => apply(breakLine)}
+        onBackspace={() => apply(deleteBefore)}
       />
     </div>
   );

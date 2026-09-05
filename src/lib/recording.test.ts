@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_NOTE_MS, accuracy, summarise, type Sample } from './recording';
+import { serializeLines } from './composition';
+import {
+  MIN_NOTE_MS,
+  accuracy,
+  summarise,
+  toTokens,
+  type NoteEvent,
+  type Sample,
+} from './recording';
 
 /** A run of readings on one pitch, one every 16ms. */
 function hold(midi: number, from: number, ms: number, cents = 0): Sample[] {
@@ -103,5 +111,69 @@ describe('accuracy', () => {
     const samples = [...hold(69, 0, 300, 2), ...hold(71, 300, 300, 40)];
 
     expect(accuracy(summarise(samples, 10))).toBeCloseTo(0.5, 5);
+  });
+});
+
+describe('toTokens', () => {
+  const at = (midi: number, startMs: number, durationMs: number): NoteEvent => ({
+    midi,
+    startMs,
+    durationMs,
+    meanCents: 0,
+    inTune: true,
+  });
+
+  /** 120 bpm, so a beat is 500ms. */
+  const BPM = 120;
+
+  it('writes one note per beat when each note lasts a beat', () => {
+    const tokens = toTokens([at(60, 0, 500), at(62, 500, 500)], 0, BPM);
+
+    expect(serializeLines([tokens])).toBe('S R');
+  });
+
+  it('turns a long note into a note and holds', () => {
+    // A note lasting three beats.
+    expect(serializeLines([toTokens([at(60, 0, 1500)], 0, BPM)])).toBe('S - -');
+  });
+
+  it('rounds to the nearest beat', () => {
+    // 1.4 beats rounds to one, 1.6 rounds to two.
+    expect(serializeLines([toTokens([at(60, 0, 700)], 0, BPM)])).toBe('S');
+    expect(serializeLines([toTokens([at(60, 0, 800)], 0, BPM)])).toBe('S -');
+  });
+
+  it('never drops a note that was too short to round up', () => {
+    // A tenth of a beat would round to zero, which would lose the note.
+    expect(serializeLines([toTokens([at(60, 0, 50)], 0, BPM)])).toBe('S');
+  });
+
+  it('follows the tonic, so the notation transposes', () => {
+    // With Sa on D, A4 is Pa.
+    expect(serializeLines([toTokens([at(69, 0, 500)], 2, BPM)])).toBe('P');
+  });
+
+  it('reads the tempo, so the same playing at half speed is written the same', () => {
+    const slow = toTokens([at(60, 0, 1000), at(62, 1000, 1000)], 0, 60);
+    const fast = toTokens([at(60, 0, 500), at(62, 500, 500)], 0, 120);
+
+    expect(serializeLines([slow])).toBe(serializeLines([fast]));
+  });
+
+  it('adds bar lines when asked', () => {
+    const events = [0, 1, 2, 3, 4, 5].map((index) => at(60 + index, index * 500, 500));
+
+    expect(serializeLines([toTokens(events, 0, BPM, 4)])).toBe('S r R g | G m');
+  });
+
+  it('counts holds toward the bar, not just notes', () => {
+    // A note of three beats, then two more: the bar falls after the fourth.
+    const tokens = toTokens([at(60, 0, 1500), at(62, 1500, 500), at(64, 2000, 500)], 0, BPM, 4);
+
+    expect(serializeLines([tokens])).toBe('S - - R | G');
+  });
+
+  it('writes nothing for an empty recording', () => {
+    expect(toTokens([], 0, BPM)).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ interface RecordControlProps {
   tolerance: number;
   notation: Notation;
   tonic: number;
+  bpm: number;
   onSave: ((title: string, notation: string) => Promise<void>) | null;
   onDiscard: () => void;
 }
@@ -43,6 +44,7 @@ export function RecordControl({
   tolerance,
   notation,
   tonic,
+  bpm,
   onSave,
   onDiscard,
 }: RecordControlProps) {
@@ -94,7 +96,11 @@ export function RecordControl({
           aria-hidden="true"
           className={`h-2 w-2 bg-signal ${isRecording ? 'rounded-[1px]' : 'rounded-full'}`}
         />
-        {isRecording ? <span className="tabular-nums">{clock(elapsedMs)}</span> : 'record'}
+        {isRecording ? (
+          <span className="tabular-nums">{clock(elapsedMs)}</span>
+        ) : (
+          'record'
+        )}
       </button>
 
       {open && summary !== null && (
@@ -104,6 +110,7 @@ export function RecordControl({
             tolerance={tolerance}
             notation={notation}
             tonic={tonic}
+            bpm={bpm}
             onSave={onSave}
             onDiscard={() => {
               onDiscard();

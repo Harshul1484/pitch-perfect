@@ -1,55 +1,88 @@
-import { midiFor, type Line, type Token } from './composition';
+import { midiFor, type Line } from './composition';
 
 /**
  * Turning written notation into something playable.
  *
- * Every token occupies exactly one beat, whether it is a note or a hold. That
- * makes the beat number and the token index the same thing, which is why the
- * highlight during playback needs no separate timeline: the beat being played
- * *is* the cell to light up.
+ * A beat is the unit. A plain note takes one; notes tied together share one
+ * between them, which is what the curved tie in a notebook means; a hold adds
+ * a beat to the note before it; and a bar line takes none at all, being a
+ * marker rather than a sound.
  */
 
-export interface PlaybackEvent {
-  /** Index of the note across the whole piece, counting every token. */
+export interface Placed {
+  /** Index of the token across the whole piece, bars and holds included. */
   tokenIndex: number;
-  midi: number;
-  /** Length in beats: one, plus any holds that follow. */
+  /** Beats from the start. Fractional inside a tied group. */
+  startBeat: number;
+  /** Length in beats. Zero for a bar line. */
   beats: number;
+  /** Pitch to sound, or null for a hold or a bar. */
+  midi: number | null;
 }
 
 export interface Schedule {
-  events: PlaybackEvent[];
-  /** Total length in beats, which is also the number of tokens. */
+  placed: Placed[];
   totalBeats: number;
 }
 
-/**
- * Flatten the page into notes with durations.
- *
- * A hold extends the note before it. A hold with no note before it — the start
- * of a piece, or after nothing — is silence, and simply takes up its beat.
- */
+/** Flatten the page into placed tokens, each with a time and a length. */
 export function buildSchedule(lines: Line[], tonic: number): Schedule {
-  const events: PlaybackEvent[] = [];
-  let index = 0;
+  const tokens = lines.flat();
+  const placed: Placed[] = [];
 
-  const tokens: Token[] = lines.flat();
+  let beat = 0;
+  let unitStart = 0;
+  let unit: { tokenIndex: number; midi: number }[] = [];
+  /** Where in `placed` the last sounding note went, so a hold can extend it. */
+  let lastSounding = -1;
 
-  for (const token of tokens) {
-    if (token.kind === 'note') {
-      events.push({ tokenIndex: index, midi: midiFor(token, tonic), beats: 1 });
-    } else {
-      const last = events[events.length - 1];
-      // Only extend a note that runs right up to this beat; a hold after
-      // silence is silence.
-      if (last && last.tokenIndex + last.beats === index) {
-        last.beats += 1;
-      }
+  const flush = () => {
+    if (unit.length === 0) return;
+
+    const share = 1 / unit.length;
+    unit.forEach((note, position) => {
+      placed.push({
+        tokenIndex: note.tokenIndex,
+        startBeat: unitStart + position * share,
+        beats: share,
+        midi: note.midi,
+      });
+      lastSounding = placed.length - 1;
+    });
+
+    unit = [];
+    beat = unitStart + 1;
+  };
+
+  tokens.forEach((token, tokenIndex) => {
+    if (token.kind === 'bar') {
+      flush();
+      placed.push({ tokenIndex, startBeat: beat, beats: 0, midi: null });
+      return;
     }
-    index += 1;
-  }
 
-  return { events, totalBeats: index };
+    if (token.kind === 'sustain') {
+      flush();
+      placed.push({ tokenIndex, startBeat: beat, beats: 1, midi: null });
+      // A hold lengthens the note it follows. After silence it is just silence.
+      if (lastSounding >= 0) placed[lastSounding].beats += 1;
+      beat += 1;
+      return;
+    }
+
+    if (token.grouped) {
+      if (unit.length === 0) unitStart = beat;
+    } else {
+      flush();
+      unitStart = beat;
+    }
+
+    unit.push({ tokenIndex, midi: midiFor(token, tonic) });
+  });
+
+  flush();
+
+  return { placed, totalBeats: beat };
 }
 
 /** Seconds a beat lasts at a given tempo. */
@@ -57,7 +90,7 @@ export function beatSeconds(bpm: number): number {
   return 60 / Math.max(1, bpm);
 }
 
-/** Which beat is sounding after a given time, or null once the piece ends. */
+/** How many beats have passed, as a fraction. Null once the piece is over. */
 export function beatAt(
   elapsedSeconds: number,
   bpm: number,
@@ -65,6 +98,29 @@ export function beatAt(
 ): number | null {
   if (totalBeats <= 0 || elapsedSeconds < 0) return null;
 
-  const beat = Math.floor(elapsedSeconds / beatSeconds(bpm));
+  const beat = elapsedSeconds / beatSeconds(bpm);
   return beat >= totalBeats ? null : beat;
+}
+
+/**
+ * Which token to highlight at a given moment.
+ *
+ * A held note and the hold that extends it cover the same beats, so more than
+ * one token can match. The latest to start wins, which walks the highlight
+ * along the page cell by cell — the way you read it — instead of parking it on
+ * the note for the whole of a long hold.
+ *
+ * Bars are skipped: they occupy no time, so nothing is ever "on" one.
+ */
+export function tokenAtBeat(schedule: Schedule, beat: number | null): number | null {
+  if (beat === null) return null;
+
+  const current = schedule.placed.reduce<Placed | null>((best, item) => {
+    const covers =
+      item.beats > 0 && beat >= item.startBeat && beat < item.startBeat + item.beats;
+    if (!covers) return best;
+    return best === null || item.startBeat >= best.startBeat ? item : best;
+  }, null);
+
+  return current?.tokenIndex ?? null;
 }

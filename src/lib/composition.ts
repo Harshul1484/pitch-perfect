@@ -12,6 +12,11 @@ export interface NoteToken {
   degree: number;
   /** -1 mandra, 0 madhya, +1 taar. */
   saptak: number;
+  /**
+   * Shares the previous token's beat, rather than taking one of its own.
+   * This is the curved tie written under notes squeezed into one matra.
+   */
+  grouped?: boolean;
 }
 
 /** A dash: hold the previous note for another beat. */
@@ -19,7 +24,12 @@ export interface SustainToken {
   kind: 'sustain';
 }
 
-export type Token = NoteToken | SustainToken;
+/** A division between bars. Takes no time of its own. */
+export interface BarToken {
+  kind: 'bar';
+}
+
+export type Token = NoteToken | SustainToken | BarToken;
 export type Line = Token[];
 
 /**
@@ -44,7 +54,10 @@ export const DEGREE_LETTERS = [
 /** Mandra is marked with a comma, taar with an apostrophe. */
 const MANDRA = ',';
 const TAAR = "'";
+/** A leading tilde ties a note into the beat before it. */
+const GROUP = '~';
 export const SUSTAIN = '-';
+export const BAR = '|';
 
 export function letterToDegree(letter: string): number | null {
   const index = DEGREE_LETTERS.indexOf(letter as (typeof DEGREE_LETTERS)[number]);
@@ -53,11 +66,17 @@ export function letterToDegree(letter: string): number | null {
 
 export function encodeToken(token: Token): string {
   if (token.kind === 'sustain') return SUSTAIN;
+  if (token.kind === 'bar') return BAR;
 
   const letter = DEGREE_LETTERS[token.degree];
-  if (token.saptak > 0) return letter + TAAR.repeat(Math.min(token.saptak, 2));
-  if (token.saptak < 0) return letter + MANDRA.repeat(Math.min(-token.saptak, 2));
-  return letter;
+  const marks =
+    token.saptak > 0
+      ? TAAR.repeat(Math.min(token.saptak, 2))
+      : token.saptak < 0
+        ? MANDRA.repeat(Math.min(-token.saptak, 2))
+        : '';
+
+  return (token.grouped ? GROUP : '') + letter + marks;
 }
 
 export function serializeLines(lines: Line[]): string {
@@ -68,6 +87,9 @@ export function serializeLines(lines: Line[]): string {
  * Read notation text back into tokens. Unrecognised characters are skipped
  * rather than throwing: this text can be hand-edited, and losing a whole piece
  * to one stray character would be worse than dropping the character.
+ *
+ * A bar may be written as either a pipe or a slash. The notebook this was
+ * built from uses a slash; a pipe is the usual symbol in printed notation.
  */
 export function parseNotation(text: string): Line[] {
   return text.split('\n').map((row) =>
@@ -77,15 +99,20 @@ export function parseNotation(text: string): Line[] {
       .filter((word) => word.length > 0)
       .flatMap<Token>((word) => {
         if (word === SUSTAIN) return [{ kind: 'sustain' }];
+        if (word === BAR || word === '/') return [{ kind: 'bar' }];
 
-        const degree = letterToDegree(word[0]);
+        const grouped = word.startsWith(GROUP);
+        const body = grouped ? word.slice(1) : word;
+
+        const degree = letterToDegree(body[0]);
         if (degree === null) return [];
 
-        const marks = word.slice(1);
+        const marks = body.slice(1);
         const taar = marks.split(TAAR).length - 1;
         const mandra = marks.split(MANDRA).length - 1;
 
-        return [{ kind: 'note', degree, saptak: taar - mandra }];
+        const token: NoteToken = { kind: 'note', degree, saptak: taar - mandra };
+        return [grouped ? { ...token, grouped: true } : token];
       }),
   );
 }
@@ -93,42 +120,6 @@ export function parseNotation(text: string): Line[] {
 /** MIDI note for a token, with Sa of madhya saptak in octave 4. */
 export function midiFor(token: NoteToken, tonic: number): number {
   return tonic + 60 + token.degree + 12 * token.saptak;
-}
-
-export function countNotes(lines: Line[]): number {
-  return lines.reduce(
-    (total, line) => total + line.filter((token) => token.kind === 'note').length,
-    0,
-  );
-}
-
-/** Append to the final line, starting one if there is none. */
-export function appendToken(lines: Line[], token: Token): Line[] {
-  if (lines.length === 0) return [[token]];
-  return lines.map((line, index) =>
-    index === lines.length - 1 ? [...line, token] : line,
-  );
-}
-
-export function appendLine(lines: Line[]): Line[] {
-  return [...lines, []];
-}
-
-/**
- * Remove the last token. An empty final line goes instead, so backspace walks
- * back over a line break the way it does in a text field.
- */
-export function deleteLast(lines: Line[]): Line[] {
-  if (lines.length === 0) return lines;
-
-  const last = lines[lines.length - 1];
-  if (last.length === 0) {
-    return lines.length === 1 ? lines : lines.slice(0, -1);
-  }
-
-  return lines.map((line, index) =>
-    index === lines.length - 1 ? line.slice(0, -1) : line,
-  );
 }
 
 /**
@@ -140,4 +131,11 @@ export function tokenFromMidi(midi: number, tonic: number): NoteToken {
   const degree = ((fromSa % 12) + 12) % 12;
 
   return { kind: 'note', degree, saptak: Math.floor(fromSa / 12) };
+}
+
+export function countNotes(lines: Line[]): number {
+  return lines.reduce(
+    (total, line) => total + line.filter((token) => token.kind === 'note').length,
+    0,
+  );
 }

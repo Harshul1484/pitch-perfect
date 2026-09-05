@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { serializeLines, tokenFromMidi } from '../lib/composition';
 import { swaraOfDegree, type Notation } from '../lib/notation';
 import { noteAt } from '../lib/notes';
-import { accuracy, type RecordingSummary } from '../lib/recording';
+import { accuracy, toTokens, type RecordingSummary } from '../lib/recording';
 import { Swara } from './swara';
 
 interface RecordingReviewProps {
@@ -10,6 +10,8 @@ interface RecordingReviewProps {
   tolerance: number;
   notation: Notation;
   tonic: number;
+  /** The metronome tempo, used to write note lengths as beats. */
+  bpm: number;
   /** Null when signed out, in which case saving is not offered. */
   onSave: ((title: string, notation: string) => Promise<void>) | null;
   onDiscard: () => void;
@@ -27,15 +29,16 @@ function seconds(ms: number): string {
  *
  * Saving writes the notes as sargam relative to the current tonic, because
  * that is what the notes page reads and it keeps a recording transposable.
- * Note lengths are not carried over: the recording knows how long each note
- * lasted, but turning that into beats needs a tempo the player never stated,
- * and a wrong rhythm would be worse than none.
+ *
+ * Note lengths come across too, quantised against the metronome tempo. That
+ * tempo is not a guess: it is the one the player set and was practising to.
  */
 export function RecordingReview({
   summary,
   tolerance,
   notation,
   tonic,
+  bpm,
   onSave,
   onDiscard,
 }: RecordingReviewProps) {
@@ -49,7 +52,9 @@ export function RecordingReview({
     if (!onSave) return;
 
     setSaving(true);
-    const lines = [events.map((event) => tokenFromMidi(event.midi, tonic))];
+    // Lengths are measured against the tempo already set on the metronome, so
+    // the rhythm is recorded rather than invented, with a bar every four beats.
+    const lines = [toTokens(events, tonic, bpm, 4)];
     const title = `Recording · ${new Date().toLocaleString()}`;
 
     await onSave(title, serializeLines(lines));

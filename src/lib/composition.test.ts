@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEGREE_LETTERS,
-  appendLine,
-  appendToken,
   countNotes,
-  deleteLast,
   encodeToken,
   letterToDegree,
   midiFor,
   parseNotation,
   serializeLines,
   tokenFromMidi,
-  type Line,
 } from './composition';
 
 const note = (degree: number, saptak = 0) => ({ kind: 'note', degree, saptak }) as const;
@@ -110,45 +106,6 @@ describe('midiFor', () => {
   });
 });
 
-describe('editing', () => {
-  const start: Line[] = [[note(0), note(2)]];
-
-  it('appends to the last line', () => {
-    expect(appendToken(start, note(4))).toEqual([[note(0), note(2), note(4)]]);
-  });
-
-  it('starts a line when there is none', () => {
-    expect(appendToken([], note(0))).toEqual([[note(0)]]);
-  });
-
-  it('appends to the new line after a line break', () => {
-    expect(appendToken(appendLine(start), note(4))).toEqual([
-      [note(0), note(2)],
-      [note(4)],
-    ]);
-  });
-
-  it('deletes the last token', () => {
-    expect(deleteLast(start)).toEqual([[note(0)]]);
-  });
-
-  it('walks back over a line break when the line is empty', () => {
-    expect(deleteLast(appendLine(start))).toEqual(start);
-  });
-
-  it('never removes the only line', () => {
-    expect(deleteLast([[]])).toEqual([[]]);
-    expect(deleteLast([])).toEqual([]);
-  });
-
-  it('does not mutate what it is given', () => {
-    const before = JSON.stringify(start);
-    appendToken(start, note(9));
-    deleteLast(start);
-    expect(JSON.stringify(start)).toBe(before);
-  });
-});
-
 describe('countNotes', () => {
   it('counts notes and ignores sustains', () => {
     expect(countNotes(parseNotation('S - R -\nG'))).toBe(3);
@@ -179,5 +136,44 @@ describe('tokenFromMidi', () => {
   it('marks saptak above and below', () => {
     expect(tokenFromMidi(72, 0)).toEqual(note(0, 1));
     expect(tokenFromMidi(48, 0)).toEqual(note(0, -1));
+  });
+});
+
+describe('bars', () => {
+  it('reads a bar written as a pipe or as a slash', () => {
+    expect(parseNotation('S | R')).toEqual([[note(0), { kind: 'bar' }, note(2)]]);
+    expect(parseNotation('S / R')).toEqual([[note(0), { kind: 'bar' }, note(2)]]);
+  });
+
+  it('always writes a bar as a pipe', () => {
+    expect(serializeLines(parseNotation('S / R'))).toBe('S | R');
+  });
+});
+
+describe('grouping', () => {
+  const grouped = (degree: number) =>
+    ({ kind: 'note', degree, saptak: 0, grouped: true }) as const;
+
+  it('ties a note into the beat before it', () => {
+    expect(parseNotation('S ~R')).toEqual([[note(0), grouped(2)]]);
+  });
+
+  it('ties several notes into one beat', () => {
+    expect(parseNotation('S ~R ~G')).toEqual([[note(0), grouped(2), grouped(4)]]);
+  });
+
+  it('combines with saptak marks', () => {
+    expect(parseNotation("~S'")).toEqual([
+      [{ kind: 'note', degree: 0, saptak: 1, grouped: true }],
+    ]);
+  });
+
+  it('round-trips', () => {
+    const text = "S ~R ~G | m -\nP ~D'";
+    expect(serializeLines(parseNotation(text))).toBe(text);
+  });
+
+  it('leaves an untied note without the flag, rather than false', () => {
+    expect(parseNotation('S')[0][0]).toEqual({ kind: 'note', degree: 0, saptak: 0 });
   });
 });

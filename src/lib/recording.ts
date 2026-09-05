@@ -1,3 +1,5 @@
+import { tokenFromMidi, type Token } from './composition';
+
 /**
  * Turning a stream of pitch readings into something worth reviewing.
  *
@@ -99,8 +101,7 @@ export function summarise(
   }
   close();
 
-  const total =
-    durationMs ?? (samples.length > 0 ? samples[samples.length - 1].at : 0);
+  const total = durationMs ?? (samples.length > 0 ? samples[samples.length - 1].at : 0);
 
   const worst = events.reduce<NoteEvent | null>(
     (furthest, event) =>
@@ -122,4 +123,45 @@ export function summarise(
 export function accuracy(summary: RecordingSummary): number | null {
   if (summary.events.length === 0) return null;
   return summary.inTuneCount / summary.events.length;
+}
+
+/**
+ * Turn recorded notes into notation, with their lengths.
+ *
+ * Durations are quantised against the metronome tempo, which the player has
+ * already set — so the rhythm is not invented, it is measured against the
+ * beat they were practising to. A note lasting about two beats becomes a note
+ * and a hold.
+ *
+ * Anything shorter than half a beat still gets one beat. Rounding it to zero
+ * would silently drop notes that were played.
+ */
+export function toTokens(
+  events: NoteEvent[],
+  tonic: number,
+  bpm: number,
+  beatsPerBar = 0,
+): Token[] {
+  const beatMs = 60000 / Math.max(1, bpm);
+  const tokens: Token[] = [];
+  let beat = 0;
+
+  for (const event of events) {
+    // A bar line every so often, if one was asked for.
+    if (beatsPerBar > 0 && beat > 0 && beat % beatsPerBar === 0) {
+      tokens.push({ kind: 'bar' });
+    }
+
+    tokens.push(tokenFromMidi(event.midi, tonic));
+    beat += 1;
+
+    const beats = Math.max(1, Math.round(event.durationMs / beatMs));
+    for (let held = 1; held < beats; held += 1) {
+      if (beatsPerBar > 0 && beat % beatsPerBar === 0) tokens.push({ kind: 'bar' });
+      tokens.push({ kind: 'sustain' });
+      beat += 1;
+    }
+  }
+
+  return tokens;
 }

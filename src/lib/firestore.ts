@@ -1,4 +1,8 @@
-import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
+import {
+  connectFirestoreEmulator,
+  getFirestore,
+  type Firestore,
+} from 'firebase/firestore';
 import { emulatorsRequested, getFirebaseApp } from './firebase';
 
 /**

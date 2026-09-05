@@ -95,6 +95,7 @@ export function Dashboard() {
             tolerance={tolerance}
             notation={notation}
             tonic={tonic}
+            bpm={bpm}
             onSave={
               uid === null
                 ? null

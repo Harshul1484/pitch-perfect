@@ -6,8 +6,12 @@ interface SwaraKeyboardProps {
   /** Saptak applied to the next note entered: -1, 0 or +1. */
   saptak: number;
   onSaptakChange: (saptak: number) => void;
+  /** Whether the next note joins the beat before it. */
+  tie: boolean;
+  onTieToggle: () => void;
   onNote: (degree: number) => void;
   onSustain: () => void;
+  onBar: () => void;
   onNewLine: () => void;
   onBackspace: () => void;
 }
@@ -32,8 +36,11 @@ const KEY =
 export function SwaraKeyboard({
   saptak,
   onSaptakChange,
+  tie,
+  onTieToggle,
   onNote,
   onSustain,
+  onBar,
   onNewLine,
   onBackspace,
 }: SwaraKeyboardProps) {
@@ -85,6 +92,24 @@ export function SwaraKeyboard({
       </div>
 
       <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={onTieToggle}
+          aria-pressed={tie}
+          title="Join the next note to the beat before it"
+          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em] ${
+            tie ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite' : ''
+          }`}
+        >
+          tie &#8635;
+        </button>
+        <button
+          type="button"
+          onClick={onBar}
+          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+        >
+          bar |
+        </button>
         <button
           type="button"
           onClick={onSustain}

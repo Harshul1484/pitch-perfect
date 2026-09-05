@@ -136,3 +136,60 @@ test('one user cannot see another user notes', async () => {
   ).toHaveCount(0);
   await second.context.close();
 });
+
+test('corrects a note in the middle of a line, not just at the end', async () => {
+  const { context, page } = await openSignedIn('notes-caret');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'notation' });
+  await expect(written).toBeVisible();
+
+  for (const key of ['S', 'R', 'P', 'G']) await page.keyboard.press(key);
+
+  // Back to before the P, swap it for Ma, and leave the G alone.
+  await page.keyboard.press('Home');
+  for (let step = 0; step < 3; step += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('m');
+
+  // Scope to the written page: the swara keyboard carries these names too.
+  await expect(written.getByText('Ma', { exact: true })).toBeVisible();
+  await expect(written.getByText('Pa', { exact: true })).toHaveCount(0);
+  // The note after the correction survived.
+  await expect(written.getByText('Ga', { exact: true })).toBeVisible();
+
+  await context.close();
+});
+
+test('writes bar lines and ties', async () => {
+  const { context, page } = await openSignedIn('notes-bars');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'notation' });
+  await expect(written).toBeVisible();
+
+  await page.keyboard.press('S');
+  await page.keyboard.press('|');
+  await page.keyboard.press('R');
+  await page.getByRole('button', { name: /^tie/ }).click();
+  await page.keyboard.press('G');
+
+  await expect(written.locator('[data-bar]')).toHaveCount(1);
+  await expect(written.locator('[data-tie]')).toHaveCount(1);
+
+  // Saved and reloaded, the bar and the tie are still there.
+  await expect(page.getByText('saved', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.getByRole('button', { name: 'Untitled' }).click();
+
+  const reloaded = page.getByRole('group', { name: 'notation' });
+  await expect(reloaded.locator('[data-bar]')).toHaveCount(1);
+  await expect(reloaded.locator('[data-tie]')).toHaveCount(1);
+
+  await context.close();
+});
