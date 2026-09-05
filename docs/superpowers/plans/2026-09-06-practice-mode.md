@@ -10,6 +10,9 @@
 
 **Build order:** Phase A (tasks 1–5, the tuner) is self-contained and shippable on its own. Phase B (tasks 6–11) adds the notes page.
 
+**Status: done.** All eleven tasks landed. Where the build departed from the
+plan it is recorded in the spec, under "What changed in the building".
+
 ---
 
 ## File Structure
@@ -49,7 +52,7 @@
 - Create: `src/lib/practice.ts`
 - Test: `src/lib/practice.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -199,12 +202,12 @@ describe('HOLDS', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/practice.test.ts`
 Expected: FAIL — cannot resolve `./practice`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 import { MIN_NOTE_MS, type Sample } from './recording';
@@ -332,12 +335,12 @@ export function reset(): PracticeState {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/practice.test.ts`
 Expected: PASS, 14 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/practice.ts src/lib/practice.test.ts
@@ -352,7 +355,7 @@ git commit -m "feat: remember how each note was played"
 - Create: `src/hooks/use-practice.ts`
 - Test: `src/hooks/use-practice.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 import { act, renderHook } from '@testing-library/react';
@@ -484,12 +487,12 @@ describe('usePractice', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `node node_modules/vitest/vitest.mjs run src/hooks/use-practice.test.ts`
 Expected: FAIL — cannot resolve `./use-practice`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -586,12 +589,12 @@ export function usePractice(
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node node_modules/vitest/vitest.mjs run src/hooks/use-practice.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/hooks/use-practice.ts src/hooks/use-practice.test.ts
@@ -607,7 +610,7 @@ git commit -m "feat: hold practice marks, and let them fade"
 - Modify: `src/components/keybed.tsx`
 - Test: `src/components/note-tile.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `src/components/note-tile.test.tsx`:
 
@@ -679,12 +682,12 @@ it('lets the note being played now win over what it remembers', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `node node_modules/vitest/vitest.mjs run src/components/note-tile.test.tsx`
 Expected: FAIL — `mark` is not a prop, and `data-mark` is absent.
 
-- [ ] **Step 3: Add the props**
+- [x] **Step 3: Add the props**
 
 In `src/components/note-tile.tsx`, extend `NoteTileProps`:
 
@@ -733,12 +736,12 @@ In `src/components/keybed.tsx`, add to `KeybedProps`:
 
 and pass `mark={marks?.[note.midi] ?? null}` and `isTarget={note.midi === targetMidi}` to each `NoteTile`. When `octaves` is given, build `CELLS` and the row count from that range instead of the full nine, and set `gridTemplateRows` from the row count rather than the fixed `grid-rows-9` class.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node node_modules/vitest/vitest.mjs run src/components/note-tile.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/note-tile.tsx src/components/keybed.tsx src/components/note-tile.test.tsx
@@ -752,7 +755,7 @@ git commit -m "feat: draw remembered marks and the target on the bed"
 **Files:**
 - Create: `src/components/practice-control.tsx`
 
-- [ ] **Step 1: Write the component**
+- [x] **Step 1: Write the component**
 
 Mirror `record-control.tsx`: a header cap that toggles, plus a popover that closes on outside click and Escape. Props:
 
@@ -772,12 +775,12 @@ interface PracticeControlProps {
 
 The cap uses the shared on/off shape — `KEY_ON` when `on`, `KEY_OFF` otherwise, never both, per `e2e/hover.spec.ts`. The popover lists `HOLDS` as a row of small caps with `aria-pressed`, a `reset` cap, and `children`.
 
-- [ ] **Step 2: Check it compiles and the hover rule holds**
+- [x] **Step 2: Check it compiles and the hover rule holds**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Expected: no output.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/practice-control.tsx
@@ -792,7 +795,7 @@ git commit -m "feat: a practice switch and its settings"
 - Modify: `src/routes/dashboard.tsx`
 - Create: `e2e/practice.spec.ts`
 
-- [ ] **Step 1: Wire the route**
+- [x] **Step 1: Wire the route**
 
 In `src/routes/dashboard.tsx`:
 
@@ -806,7 +809,7 @@ Persist the hold with the existing preference hook family — a `usePreference<s
 
 Render `<PracticeControl … />` in the header between `RecordControl` and `ControlsPopover`, and pass `marks={practice.marks}` to `<Keybed />`.
 
-- [ ] **Step 2: Write the failing end-to-end test**
+- [x] **Step 2: Write the failing end-to-end test**
 
 `e2e/practice.spec.ts`, using the injected microphone from `e2e/fake-microphone.ts`:
 
@@ -851,19 +854,19 @@ test('reset clears what the bed remembered', async () => {
 
 Add a `__silence` hook to `e2e/fake-microphone.ts` that stops the oscillators, so a test can prove the mark outlives the sound.
 
-- [ ] **Step 3: Run it**
+- [x] **Step 3: Run it**
 
 Run: `node node_modules/@playwright/test/cli.js test e2e/practice.spec.ts --reporter=list`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 4: Check the phone still fits**
+- [x] **Step 4: Check the phone still fits**
 
 Add practice-on to `e2e/mobile.spec.ts` — open practice, then `expectNothingCutOff(await audit(page))`.
 
 Run: `node node_modules/@playwright/test/cli.js test e2e/mobile.spec.ts --reporter=list`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/routes/dashboard.tsx e2e/practice.spec.ts e2e/fake-microphone.ts e2e/mobile.spec.ts
@@ -880,7 +883,7 @@ git commit -m "feat: practice mode on the tuner"
 - Create: `src/lib/follow.ts`
 - Test: `src/lib/follow.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -942,12 +945,12 @@ describe('verdicts', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/follow.test.ts`
 Expected: FAIL — cannot resolve `./follow`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 import type { Line } from './composition';
@@ -991,12 +994,12 @@ export function verdicts(
 }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/follow.test.ts`
 Expected: PASS, 8 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/follow.ts src/lib/follow.test.ts
@@ -1011,7 +1014,7 @@ git commit -m "feat: follow a written piece note by note"
 - Create: `src/lib/run.ts`
 - Test: `src/lib/run.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1080,12 +1083,12 @@ describe('grade', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/run.test.ts`
 Expected: FAIL — cannot resolve `./run`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 import { beatSeconds, type Schedule } from './playback';
@@ -1182,12 +1185,12 @@ export function grade(
 }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/run.test.ts`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/run.ts src/lib/run.test.ts
@@ -1201,7 +1204,7 @@ git commit -m "feat: grade a timed run against the written piece"
 **Files:**
 - Modify: `src/components/notation-view.tsx`
 
-- [ ] **Step 1: Add the props**
+- [x] **Step 1: Add the props**
 
 ```tsx
   /** How each written note was played, by token index. */
@@ -1210,7 +1213,7 @@ git commit -m "feat: grade a timed run against the written piece"
   targetIndex?: number | null;
 ```
 
-- [ ] **Step 2: Colour the cells**
+- [x] **Step 2: Colour the cells**
 
 In the note cell's `className`, after the existing playing highlight:
 
@@ -1230,12 +1233,12 @@ flat === targetIndex ? 'outline outline-2 -outline-offset-2 outline-graphite' : 
 
 Add `data-verdict={verdicts?.[flat]}` so a test can read it without depending on colour.
 
-- [ ] **Step 3: Check it compiles**
+- [x] **Step 3: Check it compiles**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Expected: no output.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/components/notation-view.tsx
@@ -1250,11 +1253,11 @@ git commit -m "feat: colour the written notes by how they were played"
 - Modify: `src/routes/notes.tsx`
 - Modify: `src/components/notation-editor.tsx`
 
-- [ ] **Step 1: Listen from the notes page**
+- [x] **Step 1: Listen from the notes page**
 
 `src/routes/notes.tsx` gains `usePitchDetection()` and a `listen` cap in its header, matching the tuner's wording so there is one name for one thing. The match is passed down to `NotationEditor`.
 
-- [ ] **Step 2: Hold the practice state in the editor**
+- [x] **Step 2: Hold the practice state in the editor**
 
 `NotationEditor` gains:
 
@@ -1280,7 +1283,7 @@ useEffect(() => {
 }, [practice.committed, practising, stage, targets]);
 ```
 
-- [ ] **Step 3: Swap the keyboard for the bed while practising**
+- [x] **Step 3: Swap the keyboard for the bed while practising**
 
 ```tsx
 {practising ? (
@@ -1303,17 +1306,17 @@ useEffect(() => {
 
 `octaveRange` is a small local helper: the lowest and highest octave among the targets, widened to include whatever is being played now so a stray note is still visible.
 
-- [ ] **Step 4: The stage and the score**
+- [x] **Step 4: The stage and the score**
 
 Pass `<PracticeControl>` the stage caps (`learn` / `run`) and, after a run, `{result.hits} of {result.total}`. Starting a run clears `result`, records samples through `useRecorder`, and on stop calls `grade(buildSchedule(lines, tonic), samples, bpm, tolerance)`.
 
-- [ ] **Step 5: Check it compiles and nothing is cut off**
+- [x] **Step 5: Check it compiles and nothing is cut off**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Run: `node node_modules/@playwright/test/cli.js test e2e/mobile.spec.ts --reporter=list`
 Expected: no output; PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/routes/notes.tsx src/components/notation-editor.tsx
@@ -1327,7 +1330,7 @@ git commit -m "feat: practise a piece from its own page"
 **Files:**
 - Modify: `e2e/notes.spec.ts`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 Sign in against the emulator with the injected microphone playing C4 (261.63Hz), write `S R G`, turn on practice, and assert:
 
@@ -1335,12 +1338,12 @@ Sign in against the emulator with the injected microphone playing C4 (261.63Hz),
 - once C4 has been heard, the first note carries `data-verdict="hit"` and the target has moved to the second
 - the bed shown alongside carries `data-mark="in-tune"` on C4
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
 Run: `node node_modules/@playwright/test/cli.js test e2e/notes.spec.ts --reporter=list -g practis`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add e2e/notes.spec.ts
@@ -1351,7 +1354,7 @@ git commit -m "test: practising a piece, end to end"
 
 ## Task 11: Verify and open the PR
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
@@ -1363,14 +1366,14 @@ node node_modules/vite/bin/vite.js build
 
 Expected: no type errors; no new lint errors; all unit tests pass; all e2e pass; build succeeds.
 
-- [ ] **Step 2: Open the pull request**
+- [x] **Step 2: Open the pull request**
 
 ```bash
 git push -u origin practice-mode
 gh pr create --title "Practice mode" --body "…"
 ```
 
-- [ ] **Step 3: Merge**
+- [x] **Step 3: Merge**
 
 ```bash
 gh pr merge --squash --delete-branch

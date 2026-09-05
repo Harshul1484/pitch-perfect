@@ -591,3 +591,42 @@ test('the swara keyboard gives way to the bed while practising', async () => {
 
   await context.close();
 });
+
+/**
+ * The timed run.
+ *
+ * The microphone plays middle C throughout, so of a three-note piece exactly
+ * one note is the note being played and the other two are not. A run that
+ * scored everything, or nothing, would pass a weaker assertion than this one.
+ */
+test('a timed run counts in and then scores the piece', async () => {
+  const { context, page } = await openSignedIn('notes-run', undefined, 261.63);
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+
+  // Sa Re Ga on a piece whose Sa is C: C4, D4, E4.
+  for (const key of ['S', 'R', 'G']) await page.keyboard.press(key);
+
+  await page.getByRole('button', { name: 'listen', exact: true }).click();
+  await page.getByRole('button', { name: 'practice', exact: true }).click();
+  await page.getByRole('button', { name: 'practice settings' }).click();
+
+  const panel = page.getByRole('dialog', { name: 'practice settings' });
+  await panel.getByRole('button', { name: 'run', exact: true }).click();
+  await panel.getByRole('button', { name: 'start the run' }).click();
+
+  // The run says where it is above the bed, not in the panel — and the
+  // count-in is a three second window, so this accepts either side of it
+  // rather than trying to catch one frame of it.
+  await expect(page.getByText(/counting in|playing/i)).toBeVisible({ timeout: 5_000 });
+
+  // A bar of count-in, then the piece: at 80bpm that is 3s plus 2.25s.
+  await expect(panel.getByText(/in tune, in time/)).toBeVisible({ timeout: 20_000 });
+
+  // Only the first note is the one being played, so only it can be a hit.
+  await expect(panel.getByText('1 of 3 in tune, in time.')).toBeVisible();
+
+  await context.close();
+});

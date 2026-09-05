@@ -1,7 +1,7 @@
 # Practice Mode — Design
 
 **Date:** 2026-09-06
-**Status:** Agreed — building.
+**Status:** Built.
 
 ## What it is
 
@@ -131,8 +131,31 @@ those rows would be empty for most pieces anyway.
 **The bed replaces the swara keyboard rather than joining it.** Both are
 twelve columns wide and neither is needed while the other is in use.
 
-## Open when it is picked up
+## What changed in the building
 
-- Whether the free session should offer the same score the timed run does, or
-  whether the bed alone is the point of it.
-- Whether "learn" should let you skip a note you cannot get, or make you get it.
+**An attempt is delivered as an event, not returned as a value.** `usePractice`
+takes an `onAttempt` callback. A caller folding attempts into state from a
+value would have to do it in an effect watching for the value to have changed,
+which is the shape that causes cascading renders — and the lint rule said so.
+It also removed a piece of state that existed only to be nulled again on the
+next render.
+
+**The timed run got its own hook.** `use-run.ts` owns when a run starts, when
+it ends, and what was heard in between; `grade` still owns the scoring. The
+count-in is a bar of metronome and is not optional: without it there is no way
+to know the tempo, and the first note would always be marked late. Readings are
+timestamped from the end of the count-in, so beat zero of the piece is time
+zero of the recording.
+
+**Two thresholds were measured rather than chosen.** A mark's hold is over *at*
+the hold, not after it — the fade is scheduled for exactly that instant, so a
+mark that survived it would never be removed at all. And an attempt ends on a
+silence as well as on a change of pitch, or playing a note badly and later
+playing it well averages into one mark that reports neither.
+
+## Left undone, deliberately
+
+- The free session offers no score. The bed is the record; a percentage would
+  be a second answer to a question the colours already answer.
+- "Learn" has no skip. A phrase you cannot play yet is the phrase to practise,
+  and a skip would quietly turn the stage into a page-turner.
