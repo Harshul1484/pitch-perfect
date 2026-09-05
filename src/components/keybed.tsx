@@ -75,7 +75,9 @@ export function Keybed({
         const note = byPosition.get(octave * COLUMNS + (position % COLUMNS));
 
         if (!note) {
-          return <span key={position} aria-hidden="true" className="bg-panel" />;
+          // Not a key: the plate showing through where the piano stops. It
+          // used to be panel-coloured, which read as eleven blank keys.
+          return <span key={position} aria-hidden="true" className="bg-tile" />;
         }
 
         return (

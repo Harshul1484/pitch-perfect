@@ -6,8 +6,6 @@ interface MetronomePanelProps {
   isRunning: boolean;
   beat: number | null;
   onToggle: () => void;
-  /** True when the microphone is open, which speakers can interfere with. */
-  micOpen: boolean;
 }
 
 const BEATS = Array.from({ length: BEATS_PER_BAR }, (_, index) => index);
@@ -22,7 +20,6 @@ export function MetronomePanel({
   isRunning,
   beat,
   onToggle,
-  micOpen,
 }: MetronomePanelProps) {
   return (
     <div className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[126px] short:gap-1 short:p-1.5">
@@ -48,6 +45,8 @@ export function MetronomePanel({
       <div className="flex flex-1 items-center gap-3 short:gap-2">
         <div className="flex flex-1 flex-col gap-2 short:gap-1">
           {/* Beat lights. The downbeat is taller and turns signal red. */}
+          <span className="mono-label short:hidden">beats</span>
+
           <div
             className="flex h-5 items-end gap-1.5 short:h-3.5"
             role="status"
@@ -96,13 +95,6 @@ export function MetronomePanel({
         </div>
       </div>
 
-      <p
-        className={`mono-label h-3 leading-3 short:h-2.5 short:leading-[10px] ${
-          isRunning && micOpen ? 'text-signal' : 'text-engrave/0'
-        }`}
-      >
-        headphones advised
-      </p>
     </div>
   );
 }

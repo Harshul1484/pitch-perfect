@@ -102,7 +102,13 @@ export function Dashboard() {
               this is, and the header has no width to spare. */}
           <span className="short:sr-only">Perfect Pitch</span>
         </h1>
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-1">
+        {/*
+         * Grouped by what the controls are for, with the gaps doing the
+         * grouping: tight inside a group, wide between. Eight caps in a row at
+         * even spacing left it to the reader to work out what belonged with
+         * what, which is a job the layout should have done.
+         */}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-2">
           <Link
             to="/notes"
             className={
@@ -113,36 +119,43 @@ export function Dashboard() {
           </Link>
           <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
           <NotationSwitch notation={notation} onNotationChange={setNotation} />
-          <RecordControl
-            isRecording={recorder.isRecording}
-            elapsedMs={recorder.elapsedMs}
-            disabled={status !== 'listening'}
-            onToggle={recorder.isRecording ? recorder.stop : recorder.start}
-            summary={recorder.summary}
-            tolerance={tolerance}
-            notation={notation}
-            tonic={tonic}
-            bpm={bpm}
-            onSave={
-              uid === null
-                ? null
-                : async (title, text) => {
-                    // Loaded on demand: Firestore is the heaviest thing in the
-                    // app and the tuner otherwise never needs it.
-                    const { saveRecording } = await import('../lib/save-recording');
-                    await saveRecording(uid, title, text, tonic);
-                  }
-            }
-            onDiscard={recorder.discard}
-          />
-          <PracticeControl
-            on={practising}
-            onToggle={() => setPractising((on) => !on)}
-            holdMs={holdMs}
-            onHoldChange={setHoldMs}
-            onReset={practice.reset}
-            marked={Object.keys(practice.marks).length}
-          />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
+
+          {/* The two things you reach for while playing, kept together. */}
+          <span className="flex items-center gap-1.5 short:gap-1">
+            <RecordControl
+              isRecording={recorder.isRecording}
+              elapsedMs={recorder.elapsedMs}
+              disabled={status !== 'listening'}
+              onToggle={recorder.isRecording ? recorder.stop : recorder.start}
+              summary={recorder.summary}
+              tolerance={tolerance}
+              notation={notation}
+              tonic={tonic}
+              bpm={bpm}
+              onSave={
+                uid === null
+                  ? null
+                  : async (title, text) => {
+                      // Loaded on demand: Firestore is the heaviest thing in the
+                      // app and the tuner otherwise never needs it.
+                      const { saveRecording } = await import('../lib/save-recording');
+                      await saveRecording(uid, title, text, tonic);
+                    }
+              }
+              onDiscard={recorder.discard}
+            />
+            <PracticeControl
+              on={practising}
+              onToggle={() => setPractising((on) => !on)}
+              holdMs={holdMs}
+              onHoldChange={setHoldMs}
+              onReset={practice.reset}
+              marked={Object.keys(practice.marks).length}
+            />
+          </span>
+
+          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
           <ControlsPopover
             tolerance={tolerance}
             onToleranceChange={setTolerance}
@@ -180,7 +193,6 @@ export function Dashboard() {
             isRunning={metronome.isRunning}
             beat={metronome.beat}
             onToggle={metronome.toggle}
-            micOpen={status === 'listening'}
           />
         </div>
 

@@ -104,7 +104,9 @@ export async function audit(page: Page): Promise<Audit> {
           detail: `${el.scrollWidth}px of content in ${el.clientWidth}px across`,
         });
       }
-      if (hidesY && el.scrollHeight > el.clientHeight + 1) {
+      // Truncation hides overflow on both axes, so a label that declares
+      // ellipsis is opting out of both checks, not only the one across.
+      if (hidesY && !truncates && el.scrollHeight > el.clientHeight + 1) {
         clipped.push({
           what: describe(el),
           detail: `${el.scrollHeight}px of content in ${el.clientHeight}px down`,

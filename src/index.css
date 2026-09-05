@@ -11,18 +11,36 @@
  * 360–430px tall, which is roughly half a laptop; the breakpoint is on height
  * rather than width because height is what actually runs out.
  *
+ * The threshold is 600px, not the phone's 430, because of what sits between:
+ * the full-size layout needs about 556px, so a window of 540 was too tall for
+ * the compact layout and too short for the full one, and the readout column
+ * ran off the bottom of the screen. The variant has to start before the
+ * layout stops fitting, not where phones end.
+ *
  * The second query is the same question asked of a phone held upright. Media
  * queries only ever see the device, never the quarter turn applied below, so
  * there the layout's height is the viewport's *width*.
  */
 @custom-variant short {
-  @media (max-height: 520px) {
+  @media (max-height: 600px) {
     @slot;
   }
   @media (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
     @slot;
   }
 }
+
+/*
+ * The counterpart to `short`: a screen with height to spend. The readout is
+ * the one thing you look at while playing, so where there is room it takes it.
+ */
+@custom-variant tall (@media (min-height: 760px));
+
+/*
+ * The counterpart to `short`: a screen with height to spend. The readout is
+ * the one thing you look at while playing, so where there is room it takes it.
+ */
+@custom-variant tall (@media (min-height: 760px));
 
 /*
  * Design language: a machined instrument panel. Surfaces are matte white and
@@ -169,6 +187,28 @@ body {
 
 @utility keycap-pressable {
   cursor: pointer;
+  position: relative;
+}
+
+/*
+ * A finger needs 44px; this panel does not have 44px to give. So on a touch
+ * device the *target* grows and the cap does not: an invisible pad centred on
+ * the cap brings the tappable area up to size without costing a pixel of
+ * layout. Pointer devices skip it — a mouse hits a 24px cap fine, and the pad
+ * would only make neighbouring caps fight over the cursor.
+ */
+@media (pointer: coarse) {
+  .keycap-pressable::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
 }
 
 @utility keycap-pressable--hover {
@@ -194,7 +234,7 @@ body {
 
 /* On a phone the same labels have to give up a little more. Both queries, for
    the same reason the `short` variant needs both. */
-@media (max-height: 520px), (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
+@media (max-height: 600px), (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
   .mono-label {
     font-size: 9px;
     letter-spacing: 0.1em;

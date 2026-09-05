@@ -44,12 +44,18 @@ export function TunerColumn({
   const tone = match === null ? 'text-engrave' : inTune ? 'text-intune' : 'text-signal';
 
   return (
-    <div className="keycap relative flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 short:w-[126px] short:gap-1 short:p-1.5">
+    <div className="keycap relative flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 tall:w-[196px] short:w-[126px] short:gap-1 short:p-1.5">
+      {/*
+       * The note is the one thing you read with the instrument under your
+       * chin, so where the screen has height to spare it is set large. Growing
+       * the whole panel was tried first and was worse: it pushed the metronome
+       * off the bottom and left the readout adrift in an empty box.
+       */}
       <div className="flex flex-col gap-1.5 short:gap-1">
         <span className="mono-label">note</span>
 
         <span
-          className={`flex h-[46px] items-center text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 short:h-[28px] short:text-[24px] ${tone}`}
+          className={`flex h-[46px] items-center text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 tall:h-[68px] tall:text-[60px] short:h-[28px] short:text-[24px] ${tone}`}
         >
           {match === null ? (
             '––'
