@@ -117,7 +117,7 @@ export function NoteTile({
       data-target={isTarget ? 'true' : undefined}
       title={`${note.label} · ${note.frequency.toFixed(2)} Hz`}
       className={`group relative flex h-full w-full items-center justify-center overflow-hidden transition-colors duration-150 ${base} ${ink} ${
-        isTarget ? "outline outline-2 -outline-offset-2 outline-graphite" : ""
+        isTarget ? "outline-2 -outline-offset-2 outline-graphite" : ""
       }`}
     >
       {/* The state wash, over an opaque key rather than over the grid. */}

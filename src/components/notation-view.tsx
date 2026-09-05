@@ -5,6 +5,7 @@ import type { Range } from '../lib/selection';
 import { midiFor } from '../lib/composition';
 import { swaraOfDegree, type Notation } from '../lib/notation';
 import { noteAt } from '../lib/notes';
+import type { Verdict } from '../lib/run';
 import { Swara } from './swara';
 
 interface NotationViewProps {
@@ -18,6 +19,10 @@ interface NotationViewProps {
   /** Pitch class of Sa, needed to name notes the Western way. */
   tonic: number;
   onCaretChange: (caret: Caret, extend: boolean) => void;
+  /** How each note was played while practising, by token index. */
+  verdicts?: Record<number, Verdict>;
+  /** The note practice is waiting for, by token index. */
+  targetIndex?: number | null;
 }
 
 /** Read the caret position a pointer is over, from the cell under it. */
@@ -48,6 +53,8 @@ export function NotationView({
   notation,
   tonic,
   onCaretChange,
+  verdicts,
+  targetIndex = null,
 }: NotationViewProps) {
   /** Whether the token at this position falls inside the selection. */
   const selected = (line: number, index: number): boolean => {
@@ -162,12 +169,22 @@ export function NotationView({
                 data-line={lineIndex}
                 data-index={index}
                 data-selected={selected(lineIndex, index) ? 'true' : undefined}
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-[14px] transition-colors duration-100 ${
+                data-verdict={verdicts?.[flat]}
+                data-target={flat === targetIndex ? 'true' : undefined}
+                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-[14px] transition-colors duration-100 short:h-7 short:w-7 ${
                   playing
                     ? 'bg-signal/15 text-signal'
                     : selected(lineIndex, index)
                       ? 'bg-graphite/15 text-graphite'
-                      : 'text-graphite hover:bg-black/5'
+                      : verdicts?.[flat] === 'hit'
+                        ? 'bg-intune/20 text-intune'
+                        : verdicts?.[flat]
+                          ? 'bg-signal/15 text-graphite'
+                          : 'text-graphite hover:bg-black/5'
+                } ${
+                  flat === targetIndex
+                    ? 'outline-2 -outline-offset-2 outline-graphite'
+                    : ''
                 }`}
               >
                 {token.kind === 'sustain' ? (
