@@ -67,7 +67,7 @@ function bowed(
   startedAt: number,
   durationSeconds: number,
   volume: number,
-): void {
+): OscillatorNode[] {
   const oscillator = ctx.createOscillator();
   const body = ctx.createBiquadFilter();
   const gain = ctx.createGain();
@@ -113,6 +113,8 @@ function bowed(
   lfo.stop(startedAt + durationSeconds);
   oscillator.start(startedAt);
   oscillator.stop(startedAt + durationSeconds);
+
+  return [oscillator, lfo];
 }
 
 /**
@@ -127,7 +129,7 @@ function struck(
   startedAt: number,
   durationSeconds: number,
   volume: number,
-): void {
+): OscillatorNode[] {
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
 
@@ -143,6 +145,8 @@ function struck(
 
   oscillator.start(startedAt);
   oscillator.stop(startedAt + durationSeconds);
+
+  return [oscillator];
 }
 
 /**
@@ -156,12 +160,21 @@ export function scheduleTone(
   durationSeconds: number,
   volume: number,
   voice: Voice = 'violin',
-): boolean {
+  /** Where to play into. Defaults to the speakers. */
+  destination?: AudioNode,
+): OscillatorNode[] {
   const ctx = getAudioContext();
-  if (!ctx || volume <= 0) return false;
+  if (!ctx || volume <= 0) return [];
 
-  buildVoice(ctx, ctx.destination, voice, frequency, startedAt, durationSeconds, volume);
-  return true;
+  return buildVoice(
+    ctx,
+    destination ?? ctx.destination,
+    voice,
+    frequency,
+    startedAt,
+    durationSeconds,
+    volume,
+  );
 }
 
 /**
@@ -178,12 +191,10 @@ export function buildVoice(
   startedAt: number,
   durationSeconds: number,
   volume: number,
-): void {
-  if (voice === 'piano') {
-    struck(ctx, destination, frequency, startedAt, durationSeconds, volume);
-  } else {
-    bowed(ctx, destination, frequency, startedAt, durationSeconds, volume);
-  }
+): OscillatorNode[] {
+  return voice === 'piano'
+    ? struck(ctx, destination, frequency, startedAt, durationSeconds, volume)
+    : bowed(ctx, destination, frequency, startedAt, durationSeconds, volume);
 }
 
 /** Sound a tone immediately. */
@@ -194,5 +205,5 @@ export function playFrequency(frequency: number, options: PlayOptions = {}): boo
   if (!ctx) return false;
   if (ctx.state === 'suspended') void ctx.resume();
 
-  return scheduleTone(frequency, ctx.currentTime, durationSeconds, volume, voice);
+  return scheduleTone(frequency, ctx.currentTime, durationSeconds, volume, voice).length > 0;
 }

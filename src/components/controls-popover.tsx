@@ -17,8 +17,10 @@ interface ControlsPopoverProps {
   onVoiceChange: (voice: Voice) => void;
 }
 
-const KEY =
-  'keycap keycap-pressable hover:border-engrave hover:bg-white active:keycap-pressed';
+/* Hover lives on the off state only — see the note in routes/notes.tsx. */
+const KEY = 'keycap keycap-pressable active:keycap-pressed';
+const KEY_OFF = `${KEY} hover:border-engrave hover:bg-white`;
+const KEY_ON = `${KEY} border-graphite bg-graphite bg-none text-panel`;
 
 const SELECT_ARROW =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 0h8L4 5z' fill='%238a8a84'/></svg>\")";
@@ -65,7 +67,7 @@ export function ControlsPopover(props: ControlsPopoverProps) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`${KEY} flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] ${
+        className={`${KEY_OFF} flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] ${
           props.droneOn ? 'text-graphite' : 'text-engrave'
         }`}
       >
@@ -140,11 +142,9 @@ export function ControlsPopover(props: ControlsPopoverProps) {
               type="button"
               onClick={props.onDroneToggle}
               aria-pressed={props.droneOn}
-              className={`${KEY} flex h-9 w-full items-center justify-center gap-1.5 text-[12px] font-medium lowercase tracking-wide ${
-                props.droneOn
-                  ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
-                  : ''
-              }`}
+              className={`${
+                props.droneOn ? KEY_ON : KEY_OFF
+              } flex h-9 w-full items-center justify-center gap-1.5 text-[12px] font-medium lowercase tracking-wide`}
             >
               <span
                 aria-hidden="true"

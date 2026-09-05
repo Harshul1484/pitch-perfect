@@ -17,7 +17,8 @@ interface RecordingReviewProps {
   onDiscard: () => void;
 }
 
-const KEY =
+/* Named for the state it carries, as elsewhere: nothing here is ever "on". */
+const KEY_OFF =
   'keycap keycap-pressable hover:border-engrave hover:bg-white active:keycap-pressed';
 
 function seconds(ms: number): string {
@@ -143,7 +144,7 @@ export function RecordingReview({
             type="button"
             onClick={() => void save()}
             disabled={saving || saved}
-            className={`${KEY} flex-1 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-60`}
+            className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-60`}
           >
             {saved ? 'saved' : saving ? 'saving' : 'save to notes'}
           </button>
@@ -152,7 +153,7 @@ export function RecordingReview({
         <button
           type="button"
           onClick={onDiscard}
-          className={`${KEY} flex-1 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
+          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
         >
           {saved ? 'close' : 'discard'}
         </button>

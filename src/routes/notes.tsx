@@ -5,8 +5,15 @@ import { useCompositions } from '../hooks/use-compositions';
 import { AccountControl } from '../components/account-control';
 import { NotationEditor } from '../components/notation-editor';
 
-const KEY =
-  'keycap keycap-pressable hover:border-engrave hover:bg-white active:keycap-pressed';
+/*
+ * Hover styling belongs to the off state, never alongside the on state.
+ * `hover:bg-white` and `hover:bg-graphite` have the same specificity, so
+ * whichever Tailwind emits last wins — and it emits white last, which
+ * repainted a pressed cap white and took its near-white label with it.
+ */
+const KEY = 'keycap keycap-pressable active:keycap-pressed';
+const KEY_OFF = `${KEY} hover:border-engrave hover:bg-white`;
+const KEY_ON = `${KEY} border-graphite bg-graphite bg-none text-panel`;
 
 export function Notes() {
   const auth = useAuth();
@@ -60,7 +67,7 @@ export function Notes() {
             <button
               type="button"
               onClick={() => void createPiece()}
-              className={`${KEY} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
+              className={`${KEY_OFF} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
             >
               new
             </button>
@@ -78,11 +85,9 @@ export function Notes() {
                 type="button"
                 onClick={() => setSelectedId(item.id)}
                 aria-current={item.id === selectedId ? 'true' : undefined}
-                className={`${KEY} truncate px-2 py-1.5 text-left text-[12px] ${
-                  item.id === selectedId
-                    ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
-                    : ''
-                }`}
+                className={`${
+                  item.id === selectedId ? KEY_ON : KEY_OFF
+                } truncate px-2 py-1.5 text-left text-[12px]`}
               >
                 {item.title || 'Untitled'}
               </button>

@@ -26,8 +26,10 @@ const SAPTAKS = [
   { value: 1, label: 'taar' },
 ];
 
-const KEY =
-  'keycap keycap-pressable hover:border-engrave hover:bg-white active:keycap-pressed';
+/* Hover lives on the off state only — see the note in routes/notes.tsx. */
+const KEY = 'keycap keycap-pressable active:keycap-pressed';
+const KEY_OFF = `${KEY} hover:border-engrave hover:bg-white`;
+const KEY_ON = `${KEY} border-graphite bg-graphite bg-none text-panel`;
 
 /**
  * The swara keyboard.
@@ -62,11 +64,9 @@ export function SwaraKeyboard({
               type="button"
               onClick={() => onSaptakChange(option.value)}
               aria-pressed={saptak === option.value}
-              className={`${KEY} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em] ${
-                saptak === option.value
-                  ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
-                  : 'text-engrave'
-              }`}
+              className={`${
+                saptak === option.value ? KEY_ON : `${KEY_OFF} text-engrave`
+              } px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
             >
               {option.label}
             </button>
@@ -88,7 +88,7 @@ export function SwaraKeyboard({
                   ? `insert ${NOTE_NAMES[(tonic + degree) % 12]}`
                   : `insert ${swara.komal ? 'komal ' : ''}${swara.tivra ? 'tivra ' : ''}${swara.text}`
               }
-              className={`${KEY} flex aspect-square flex-col items-center justify-center gap-1 short:aspect-auto short:h-[34px] short:gap-0.5 ${
+              className={`${KEY_OFF} flex aspect-square flex-col items-center justify-center gap-1 short:aspect-auto short:h-[34px] short:gap-0.5 ${
                 swara.komal || swara.tivra ? 'bg-cap-dark bg-none' : ''
               }`}
             >
@@ -113,37 +113,37 @@ export function SwaraKeyboard({
           onClick={onTieToggle}
           aria-pressed={tie}
           title="Join the next note to the beat before it"
-          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em] ${
-            tie ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite' : ''
-          }`}
+          className={`${
+            tie ? KEY_ON : KEY_OFF
+          } flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           tie &#8635;
         </button>
         <button
           type="button"
           onClick={onBar}
-          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           bar |
         </button>
         <button
           type="button"
           onClick={onSustain}
-          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           hold &mdash;
         </button>
         <button
           type="button"
           onClick={onNewLine}
-          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           new line
         </button>
         <button
           type="button"
           onClick={onBackspace}
-          className={`${KEY} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           backspace
         </button>

@@ -3,6 +3,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BASE_URL } from '../playwright.config';
 import { audit, expectNothingCutOff } from './audit';
+import { expectStaysDark } from './cap';
 
 /**
  * The notes feature, end to end against the Firebase emulators.
@@ -46,16 +47,27 @@ async function openSignedIn(
 
   // The Auth emulator serves its own chooser: add an account, let it invent
   // the details, then sign in.
+  //
+  // Each step is waited for rather than sampled. `isVisible()` asked the
+  // instant the document loads answers about a page the emulator has not
+  // rendered yet, which skipped "add new account" and left the popup on a
+  // screen with no sign-in button to click — a hang, not a failure.
   await popup.waitForLoadState('domcontentloaded');
+
   const addAccount = popup.getByRole('button', { name: /add new account/i });
-  if (await addAccount.isVisible().catch(() => false)) {
+  const signIn = popup.getByRole('button', { name: /sign in with google/i });
+
+  await expect(addAccount.or(signIn).first()).toBeVisible({ timeout: 20_000 });
+
+  if (await addAccount.isVisible()) {
     await addAccount.click();
-  }
-  const autoFill = popup.getByRole('button', { name: /auto.generate/i });
-  if (await autoFill.isVisible().catch(() => false)) {
+
+    const autoFill = popup.getByRole('button', { name: /auto.generate/i });
+    await expect(autoFill).toBeVisible({ timeout: 15_000 });
     await autoFill.click();
   }
-  await popup.getByRole('button', { name: /sign in with google/i }).click();
+
+  await signIn.click();
 
   await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
     timeout: 20_000,
@@ -360,3 +372,77 @@ for (const screen of [
     await context.close();
   });
 }
+
+/**
+ * The caps on this page that can be on: the piece you have open, the tie, and
+ * play while it is playing. Each one had the plain hover riding along with it,
+ * which repainted it white under the pointer and hid its near-white label.
+ */
+test('the caps that are on stay dark under the pointer', async () => {
+  const { context, page } = await openSignedIn('notes-hover');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
+
+  await expectStaysDark(
+    page.getByRole('button', { name: 'Untitled' }),
+    'the open piece',
+  );
+
+  const tie = page.getByRole('button', { name: /^tie/ });
+  await tie.click();
+  await expectStaysDark(tie, 'the armed tie');
+
+  await context.close();
+});
+
+/**
+ * Stop has to reach the audio, not just the button.
+ *
+ * The phrase is scheduled onto the audio clock in one go, so a stop that only
+ * touches React state leaves the piece playing to the end while the button
+ * cheerfully says "play" again. This watches the real audio graph: pressing
+ * stop must issue fresh stop calls to the oscillators already in flight.
+ */
+test('stopping playback silences what is already scheduled', async () => {
+  const { context, page } = await openSignedIn('notes-stop');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
+  for (const key of ['S', 'R', 'G', 'm']) await page.keyboard.press(key);
+
+  // Patched after load but before anything sounds: notes are only built when
+  // play is pressed.
+  await page.evaluate(() => {
+    const spy = window as unknown as { __stops: number };
+    spy.__stops = 0;
+    const real = OscillatorNode.prototype.stop;
+    OscillatorNode.prototype.stop = function (when?: number) {
+      spy.__stops += 1;
+      return real.call(this, when);
+    };
+  });
+
+  await page.getByRole('button', { name: 'play', exact: true }).click();
+
+  const stop = page.getByRole('button', { name: 'stop', exact: true });
+  await expect(stop).toBeVisible();
+
+  const scheduled = await page.evaluate(
+    () => (window as unknown as { __stops: number }).__stops,
+  );
+  expect(scheduled, 'the phrase was scheduled').toBeGreaterThan(0);
+
+  await stop.click();
+
+  // Every source in flight is told to stop again, at the moment of the press
+  // rather than at the end of its own note.
+  const afterStop = await page.evaluate(
+    () => (window as unknown as { __stops: number }).__stops,
+  );
+  expect(afterStop, 'stop reached the audio graph').toBeGreaterThan(scheduled);
+
+  await expect(page.getByRole('button', { name: 'play', exact: true })).toBeVisible();
+
+  await context.close();
+});

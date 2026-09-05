@@ -51,8 +51,10 @@ import { useNotationPlayback } from '../hooks/use-notation-playback';
 import { NotationView } from './notation-view';
 import { SwaraKeyboard } from './swara-keyboard';
 
-const KEY =
-  'keycap keycap-pressable hover:border-engrave hover:bg-white active:keycap-pressed';
+/* Hover lives on the off state only — see the note in routes/notes.tsx. */
+const KEY = 'keycap keycap-pressable active:keycap-pressed';
+const KEY_OFF = `${KEY} hover:border-engrave hover:bg-white`;
+const KEY_ON = `${KEY} border-graphite bg-graphite bg-none text-panel`;
 
 const SELECT_ARROW =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 0h8L4 5z' fill='%238a8a84'/></svg>\")";
@@ -392,7 +394,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
             clearHistory(id);
             void onDelete(id);
           }}
-          className={`${KEY} px-2 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
+          className={`${KEY_OFF} px-2 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
         >
           delete
         </button>
@@ -421,11 +423,9 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
           type="button"
           onClick={playback.isPlaying ? playback.stop : playback.play}
           aria-pressed={playback.isPlaying}
-          className={`${KEY} px-3 py-1.5 text-[12px] font-medium lowercase tracking-wide ${
-            playback.isPlaying
-              ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
-              : ''
-          }`}
+          className={`${
+            playback.isPlaying ? KEY_ON : KEY_OFF
+          } px-3 py-1.5 text-[12px] font-medium lowercase tracking-wide`}
         >
           {playback.isPlaying ? 'stop' : 'play'}
         </button>
@@ -437,7 +437,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
             setDirty(true);
           }}
           disabled={!canUndo(history)}
-          className={`${KEY} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
+          className={`${KEY_OFF} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
         >
           undo
         </button>
@@ -449,7 +449,7 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
             setDirty(true);
           }}
           disabled={!canRedo(history)}
-          className={`${KEY} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
+          className={`${KEY_OFF} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
         >
           redo
         </button>

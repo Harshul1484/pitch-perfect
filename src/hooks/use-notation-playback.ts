@@ -16,6 +16,12 @@ export interface NotationPlayback {
 const GAP_SECONDS = 0.06;
 /** A moment before the first note, so the start is not clipped. */
 const LEAD_IN = 0.08;
+/**
+ * Cutting a phrase off mid-note has to be a quick fade rather than an instant
+ * mute, or the waveform is chopped part-way through a cycle and the speakers
+ * click.
+ */
+const CUT_SECONDS = 0.04;
 
 /**
  * Play a written page.
@@ -35,15 +41,20 @@ export function useNotationPlayback(
   const [token, setToken] = useState<number | null>(null);
 
   const frameRef = useRef<number | null>(null);
-  const stopAtRef = useRef<(() => void) | null>(null);
+  /**
+   * Silences whatever `play` scheduled. The whole phrase goes onto the audio
+   * clock up front, so nothing the React side does can call it back — without
+   * this, stopping cleared the highlight while the piece played on to the end.
+   */
+  const silenceRef = useRef<(() => void) | null>(null);
 
   const stop = useCallback(() => {
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
-    stopAtRef.current?.();
-    stopAtRef.current = null;
+    silenceRef.current?.();
+    silenceRef.current = null;
     setToken(null);
     setIsPlaying(false);
   }, []);
@@ -60,17 +71,45 @@ export function useNotationPlayback(
     const perBeat = beatSeconds(bpm);
     const startedAt = ctx.currentTime + LEAD_IN;
 
+    // Everything plays through one bus, so stopping is one fade rather than a
+    // hunt through however many notes are still in flight.
+    const bus = ctx.createGain();
+    bus.connect(ctx.destination);
+
+    const sources: OscillatorNode[] = [];
+
     for (const item of schedule.placed) {
       if (item.midi === null) continue;
 
-      scheduleTone(
-        frequencyOf(item.midi),
-        startedAt + item.startBeat * perBeat,
-        Math.max(item.beats * perBeat - GAP_SECONDS, 0.04),
-        volume,
-        voice,
+      sources.push(
+        ...scheduleTone(
+          frequencyOf(item.midi),
+          startedAt + item.startBeat * perBeat,
+          Math.max(item.beats * perBeat - GAP_SECONDS, 0.04),
+          volume,
+          voice,
+          bus,
+        ),
       );
     }
+
+    silenceRef.current = () => {
+      const now = ctx.currentTime;
+
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(bus.gain.value, now);
+      bus.gain.linearRampToValueAtTime(0, now + CUT_SECONDS);
+
+      // Faded out, then actually stopped: a silent oscillator is still an
+      // oscillator, and a long piece would leave dozens of them running.
+      for (const source of sources) {
+        try {
+          source.stop(now + CUT_SECONDS);
+        } catch {
+          // Already stopped, which is exactly what we wanted anyway.
+        }
+      }
+    };
 
     setIsPlaying(true);
 
