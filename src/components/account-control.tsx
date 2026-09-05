@@ -64,7 +64,7 @@ export function AccountControl({ status, user, error, signIn, signOut }: AuthSta
           )}
 
           {shortNameOf(user.displayName, user.email) !== null && (
-            <span className="mono-label normal-case short:hidden">
+            <span className="mono-label normal-case narrow:hidden">
               {shortNameOf(user.displayName, user.email)}
             </span>
           )}

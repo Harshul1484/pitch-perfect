@@ -92,7 +92,7 @@ export function PracticeControl({
         <div
           role="dialog"
           aria-label="practice settings"
-          className="keycap absolute right-0 top-[calc(100%+8px)] z-30 flex w-[236px] flex-col gap-3 bg-tile p-3 short:w-[210px] short:gap-2 short:p-2"
+          className="keycap absolute right-0 top-[calc(100%+8px)] z-30 flex w-[236px] flex-col gap-3 bg-tile p-3 narrow:w-[210px] short:gap-2 short:p-2"
         >
           <div className="flex flex-col gap-1.5">
             <span className="mono-label">colour holds for</span>

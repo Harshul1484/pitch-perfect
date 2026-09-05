@@ -67,7 +67,7 @@ export function RecordingReview({
     <div
       role="group"
       aria-label="recording review"
-      className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[152px] short:gap-1.5 short:p-2"
+      className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 narrow:w-[152px] short:gap-1.5 short:p-2"
     >
       <div className="flex items-center justify-between">
         <span className="mono-label">recording</span>

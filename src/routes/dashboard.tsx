@@ -9,9 +9,10 @@ import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
 import { useHoldPreference, usePractice } from '../hooks/use-practice';
+import { useMedia } from '../hooks/use-media';
 import type { Notation } from '../lib/notation';
 import { AccountControl } from '../components/account-control';
-import { ControlsPopover } from '../components/controls-popover';
+import { ControlsPanel, ControlsPopover } from '../components/controls-popover';
 import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
 import { Mark } from '../components/mark';
@@ -62,6 +63,14 @@ export function Dashboard() {
 
   const recorder = useRecorder(match, tolerance);
 
+  /*
+   * Where the readout column has room to spare, the controls live in it as a
+   * panel rather than behind a button in the header. Rendered rather than
+   * hidden: a display:none copy is still in the document, and two controls
+   * answering to one name is a bug for a screen reader and a test alike.
+   */
+  const roomy = useMedia('(min-height: 880px)');
+
   // Practice: the bed keeps what it heard, rather than only showing it.
   const [practising, setPractising] = useState(false);
   const [holdMs, setHoldMs] = useHoldPreference();
@@ -98,9 +107,9 @@ export function Dashboard() {
       <header className="flex shrink-0 items-center justify-between gap-2 px-0.5">
         <h1 className="flex shrink-0 items-center gap-2 text-[18px] font-semibold leading-none tracking-[-0.02em] short:gap-1.5 short:text-[14px]">
           <Mark />
-          {/* The name stands down on a phone; the mark still says whose app
-              this is, and the header has no width to spare. */}
-          <span className="short:sr-only">Perfect Pitch</span>
+          {/* The name stands down where the header runs out of width; the
+              mark still says whose app this is. */}
+          <span className="narrow:sr-only">Perfect Pitch</span>
         </h1>
         {/*
          * Grouped by what the controls are for, with the gaps doing the
@@ -117,9 +126,9 @@ export function Dashboard() {
           >
             notes &rarr;
           </Link>
-          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           <NotationSwitch notation={notation} onNotationChange={setNotation} />
-          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
 
           {/* The two things you reach for while playing, kept together. */}
           <span className="flex items-center gap-1.5 short:gap-1">
@@ -155,20 +164,22 @@ export function Dashboard() {
             />
           </span>
 
-          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
-          <ControlsPopover
-            tolerance={tolerance}
-            onToleranceChange={setTolerance}
-            sustain={sustain}
-            onSustainChange={setSustain}
-            tonic={tonic}
-            onTonicChange={setTonic}
-            droneOn={drone.isOn}
-            onDroneToggle={drone.toggle}
-            voice={voice}
-            onVoiceChange={setVoice}
-          />
-          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
+          {!roomy && (
+            <ControlsPopover
+              tolerance={tolerance}
+              onToleranceChange={setTolerance}
+              sustain={sustain}
+              onSustainChange={setSustain}
+              tonic={tonic}
+              onTonicChange={setTonic}
+              droneOn={drone.isOn}
+              onDroneToggle={drone.toggle}
+              voice={voice}
+              onVoiceChange={setVoice}
+            />
+          )}
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           <AccountControl {...auth} />
         </div>
       </header>
@@ -194,6 +205,23 @@ export function Dashboard() {
             beat={metronome.beat}
             onToggle={metronome.toggle}
           />
+
+          {/* Only where the column has room left over; otherwise the header
+              keeps its button and this is not rendered at all. */}
+          {roomy && (
+            <ControlsPanel
+              tolerance={tolerance}
+              onToleranceChange={setTolerance}
+              sustain={sustain}
+              onSustainChange={setSustain}
+              tonic={tonic}
+              onTonicChange={setTonic}
+              droneOn={drone.isOn}
+              onDroneToggle={drone.toggle}
+              voice={voice}
+              onVoiceChange={setVoice}
+            />
+          )}
         </div>
 
         <Keybed

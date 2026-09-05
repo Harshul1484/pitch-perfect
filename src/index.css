@@ -37,10 +37,36 @@
 @custom-variant tall (@media (min-height: 760px));
 
 /*
+ * Taller still: enough for the controls to live in the readout column as a
+ * panel instead of behind a button. Swept with the microphone alert showing,
+ * which is the tallest that column ever gets — it still overflowed at 840 and
+ * was clean from 860, so this starts at 880.
+ */
+@custom-variant roomy (@media (min-height: 880px));
+
+/*
  * The counterpart to `short`: a screen with height to spend. The readout is
  * the one thing you look at while playing, so where there is room it takes it.
  */
 @custom-variant tall (@media (min-height: 760px));
+
+/*
+ * `narrow` is the width counterpart to `short`. Some things are given up for
+ * want of height and some for want of width, and the two are not the same
+ * screen: a wide, short window has room for the product name and no room for
+ * a tall readout. Gating a width decision on `short` hid the name on laptops.
+ *
+ * Second query for the same reason `short` needs one: rotated, the layout's
+ * width is the viewport's height.
+ */
+@custom-variant narrow {
+  @media (max-width: 700px) {
+    @slot;
+  }
+  @media (orientation: portrait) and (pointer: coarse) and (max-height: 700px) {
+    @slot;
+  }
+}
 
 /*
  * Design language: a machined instrument panel. Surfaces are matte white and

@@ -22,7 +22,7 @@ export function MetronomePanel({
   onToggle,
 }: MetronomePanelProps) {
   return (
-    <div className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[126px] short:gap-1 short:p-1.5">
+    <div className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3 narrow:w-[126px] short:gap-1 short:p-1.5">
       <div className="flex h-3 items-center justify-between">
         <span className="mono-label">metronome</span>
         <span className="mono-label">4/4</span>

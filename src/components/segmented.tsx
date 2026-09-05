@@ -24,7 +24,7 @@ export function Segmented<T extends string>({
        * "sargam", so it is a heading for something already legible, and the
        * group keeps its accessible name either way.
        */}
-      <span className="mono-label short:hidden">{label}</span>
+      <span className="mono-label narrow:hidden">{label}</span>
       <div role="group" aria-label={label} className="flex gap-1">
         {options.map((option) => {
           const active = option === value;

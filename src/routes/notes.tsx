@@ -63,7 +63,7 @@ export function Notes() {
   return (
     <Shell auth={auth} listening={listening} onListen={listening ? stop : start}>
       <div className="flex min-h-0 flex-1 gap-2.5 short:gap-1.5">
-        <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[132px] short:gap-1.5 short:p-2">
+        <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 narrow:w-[132px] short:gap-1.5 short:p-2">
           <div className="flex items-center justify-between">
             <span className="mono-label">pieces</span>
             <button
