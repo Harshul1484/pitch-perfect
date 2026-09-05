@@ -1,6 +1,4 @@
-import { BEATS_PER_BAR, MAX_BPM, MIN_BPM } from '../lib/metronome';
-import { Knob } from './knob';
-import { Tooltip } from './tooltip';
+import { BEATS_PER_BAR, MAX_BPM, MIN_BPM, clampBpm } from '../lib/metronome';
 
 interface MetronomePanelProps {
   bpm: number;
@@ -27,25 +25,27 @@ export function MetronomePanel({
   micOpen,
 }: MetronomePanelProps) {
   return (
-    <div className="keycap flex w-[228px] shrink-0 flex-col gap-2 bg-tile p-3">
+    <div className="keycap flex w-[170px] shrink-0 flex-col gap-2 bg-tile p-3">
       <div className="flex h-3 items-center justify-between">
         <span className="mono-label">metronome</span>
         <span className="mono-label">4/4</span>
       </div>
 
-      <div className="flex flex-1 items-center gap-3">
-        <Tooltip label="drag or use arrow keys to set tempo" side="bottom">
-          <Knob
-            label="tempo"
-            value={bpm}
-            min={MIN_BPM}
-            max={MAX_BPM}
-            step={1}
-            onChange={onBpmChange}
-            format={(value) => `${value} bpm`}
-          />
-        </Tooltip>
+      <label className="flex items-center gap-2">
+        <input
+          type="number"
+          min={MIN_BPM}
+          max={MAX_BPM}
+          step={1}
+          value={bpm}
+          onChange={(event) => onBpmChange(clampBpm(Number(event.target.value)))}
+          aria-label="tempo"
+          className="keycap w-[68px] bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
+        />
+        <span className="mono-label">bpm</span>
+      </label>
 
+      <div className="flex flex-1 items-center gap-3">
         <div className="flex flex-1 flex-col gap-2">
           {/* Beat lights. The downbeat is taller and turns signal red. */}
           <div

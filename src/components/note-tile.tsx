@@ -19,11 +19,23 @@ interface NoteTileProps {
   tonic: number;
 }
 
+/** Cents at the edge of a tile's meter. Beyond this the marker pins. */
+const METER_RANGE = 50;
+/** How much of the tile height the marker may travel, either side of centre. */
+const TRAVEL = 34;
+
 /**
- * One key on the bed. Naturals are pale caps, accidentals graphite ones,
- * borrowing the keyboard's own encoding.
+ * One cell of the key bed.
  *
- * Knows nothing about audio or the microphone — it reports clicks upward and
+ * Flat, not a keycap: the bed reads as one engraved plate divided by hairlines
+ * rather than 88 separate objects, which at this density is calmer and lets
+ * state be shown by a tint instead of a ring.
+ *
+ * When a note is heard, the cell becomes its own little meter — a fixed line
+ * at the true pitch and a marker riding above or below it. Reading the amount
+ * you are out on the note you are out on beats looking somewhere else for it.
+ *
+ * Knows nothing about audio or the microphone: it reports clicks upward and
  * renders the state it is handed.
  */
 export function NoteTile({
@@ -38,20 +50,37 @@ export function NoteTile({
   const detected = detectedCents !== null;
   const inTune = detected && Math.abs(detectedCents) <= tolerance;
 
-  // Accidentals stay in the light palette, as on the reference hardware,
-  // distinguished by a deeper cap and edge rather than going near-black.
-  const surface = note.isAccidental
-    ? 'border-cap-dark-edge bg-cap-dark bg-none'
-    : 'bg-panel border-hairline';
+  // Accidentals are a shade cooler rather than a different colour. The
+  // distinction should be findable, not loud.
+  const base = note.isAccidental ? 'bg-recess' : 'bg-panel';
 
-  let state = '';
-  if (detected) {
-    state = inTune
-      ? 'border-intune ring-[2.5px] ring-intune/35 -translate-y-px'
-      : 'border-signal ring-[2.5px] ring-signal/35 -translate-y-px';
+  // State is a wash laid over that base, not a replacement for it. Replacing
+  // it let the translucent colour composite against the grid lines showing
+  // through, which turned a light red into mud.
+  let wash = '';
+  let ink = 'text-graphite/75';
+
+  if (inTune) {
+    wash = 'bg-intune/20';
+    ink = 'text-intune';
+  } else if (detected) {
+    wash = 'bg-signal/10';
+    ink = 'text-graphite';
   } else if (isActive) {
-    state = 'keycap-pressed';
+    wash = 'bg-graphite/8';
+    ink = 'text-graphite';
   }
+
+  /** A stable name for what this key is showing, for tests and styling alike. */
+  const state = inTune ? 'in-tune' : detected ? 'out' : isActive ? 'active' : 'idle';
+
+  // Sharp rides above the line, flat below.
+  const marker =
+    detectedCents === null
+      ? 50
+      : 50 -
+        (Math.max(-METER_RANGE, Math.min(METER_RANGE, detectedCents)) / METER_RANGE) *
+          TRAVEL;
 
   return (
     <button
@@ -59,24 +88,57 @@ export function NoteTile({
       onClick={() => onPlay(note)}
       aria-label={`Play ${spokenLabel(note, notation, tonic)}, ${note.frequency.toFixed(2)} hertz`}
       aria-current={detected ? 'true' : undefined}
-      className={`keycap keycap-pressable relative flex h-full w-full flex-col items-center justify-center gap-[3px] hover:border-engrave hover:bg-white ${surface} ${state}`}
+      data-state={state}
+      title={`${note.label} · ${note.frequency.toFixed(2)} Hz`}
+      className={`group relative flex h-full w-full items-center justify-center overflow-hidden transition-colors duration-150 ${base} ${ink}`}
     >
-      <span className="text-[13px] font-medium leading-none tracking-tight tabular-nums">
-        {notation === 'sargam' ? (
-          <Swara swara={swaraFor(note.midi, tonic)} />
-        ) : (
-          note.label
-        )}
-      </span>
-
+      {/* The state wash, over an opaque key rather than over the grid. */}
       <span
-        className={`font-mono text-[9px] leading-none tabular-nums ${
-          detected ? (inTune ? 'text-intune' : 'text-signal') : 'text-engrave'
-        }`}
-      >
-        {detected
-          ? `${detectedCents > 0 ? '+' : ''}${detectedCents}`
-          : note.frequency.toFixed(0)}
+        aria-hidden="true"
+        className={`absolute inset-0 transition-colors duration-150 group-hover:bg-white/60 ${wash}`}
+      />
+      {detected && (
+        <>
+          {/* The true pitch, and where you actually are. Both are drawn as a
+              pair of stubs so the note name stays legible between them. */}
+          {['left-0.5', 'right-0.5'].map((side) => (
+            <span
+              key={`target-${side}`}
+              aria-hidden="true"
+              className={`absolute top-1/2 h-0.5 w-[26%] -translate-y-1/2 bg-graphite/45 ${side}`}
+            />
+          ))}
+          {['left-0.5', 'right-0.5'].map((side) => (
+            <span
+              key={`marker-${side}`}
+              aria-hidden="true"
+              className={`absolute h-0.5 w-[26%] -translate-y-1/2 rounded-full transition-[top] duration-100 ease-out ${side} ${
+                inTune ? 'bg-intune' : 'bg-signal'
+              }`}
+              style={{ top: `${marker}%` }}
+            />
+          ))}
+        </>
+      )}
+
+      <span className="relative flex items-baseline gap-1">
+        {notation === 'sargam' ? (
+          <Swara swara={swaraFor(note.midi, tonic)} className="text-[14px]" />
+        ) : (
+          <span className="text-[14px] leading-none tracking-tight">
+            {note.name}
+            <sup className="ml-px text-[9px] font-medium tabular-nums opacity-70">
+              {note.octave}
+            </sup>
+          </span>
+        )}
+
+        {detected && (
+          <span className="font-mono text-[9px] leading-none tabular-nums">
+            {detectedCents > 0 ? '+' : ''}
+            {detectedCents}
+          </span>
+        )}
       </span>
     </button>
   );

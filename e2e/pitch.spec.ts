@@ -128,7 +128,7 @@ test('stops listening and clears the readout', async () => {
 
   await page.getByRole('button', { name: 'stop' }).first().click();
 
-  await expect(page.getByText('mic closed')).toBeVisible();
+  await expect(page.getByText('idle')).toBeVisible();
   await expect(page.locator('[aria-current="true"]')).toHaveCount(0);
 
   await context.close();

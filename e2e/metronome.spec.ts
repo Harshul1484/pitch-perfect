@@ -31,11 +31,10 @@ test('runs a 4/4 bar and lights every beat', async () => {
   const start = page.getByRole('button', { name: 'start' });
   await expect(start).toBeVisible();
 
-  // Fast tempo, so a full bar passes quickly. The knob is a slider.
-  const tempo = page.getByRole('slider', { name: 'tempo' });
-  await tempo.focus();
-  await page.keyboard.press('End');
-  await expect(tempo).toHaveAttribute('aria-valuenow', '260');
+  // Fast tempo, so a full bar passes quickly.
+  const tempo = page.getByLabel('tempo');
+  await tempo.fill('260');
+  await expect(tempo).toHaveValue('260');
 
   await start.click();
 
@@ -75,19 +74,18 @@ test('stops, and clears the beat lights', async () => {
 test('tempo is adjustable by keyboard and is clamped', async () => {
   const { context, page } = await openApp('metronome-tempo');
 
-  const tempo = page.getByRole('slider', { name: 'tempo' });
-  await tempo.focus();
+  const tempo = page.getByLabel('tempo');
 
-  await page.keyboard.press('Home');
-  await expect(tempo).toHaveAttribute('aria-valuenow', '30');
+  await tempo.fill('120');
+  await expect(tempo).toHaveValue('120');
 
-  await page.keyboard.press('ArrowUp');
-  await expect(tempo).toHaveAttribute('aria-valuenow', '31');
+  // Typed values outside the range are pulled back to it, rather than being
+  // accepted and then producing nonsense timing.
+  await tempo.fill('5');
+  await expect(tempo).toHaveValue('30');
 
-  // Already at the floor: it must not go below it.
-  await page.keyboard.press('Home');
-  await page.keyboard.press('ArrowDown');
-  await expect(tempo).toHaveAttribute('aria-valuenow', '30');
+  await tempo.fill('9000');
+  await expect(tempo).toHaveValue('260');
 
   await context.close();
 });

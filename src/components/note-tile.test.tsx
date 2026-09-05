@@ -7,208 +7,97 @@ import { NoteTile } from './note-tile';
 const middleC = noteAt(60);
 const cSharp4 = noteAt(61);
 
-describe('NoteTile', () => {
-  it('shows the note name and its reference frequency', () => {
-    render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
+const base = {
+  onPlay: () => {},
+  isActive: false,
+  tolerance: IN_TUNE_CENTS,
+  notation: 'western' as const,
+  tonic: 0,
+};
 
-    expect(screen.getByText('C4')).toBeInTheDocument();
-    expect(screen.getByText('262')).toBeInTheDocument();
+describe('NoteTile', () => {
+  it('shows the pitch class with its octave as a superscript', () => {
+    render(<NoteTile {...base} note={middleC} />);
+
+    const button = screen.getByRole('button');
+    expect(button).toHaveTextContent('C4');
+    expect(button.querySelector('sup')).toHaveTextContent('4');
   });
 
-  it('labels the button for screen readers with the exact frequency', () => {
-    render(
-      <NoteTile
-        note={cSharp4}
-        onPlay={() => {}}
-        isActive={false}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
+  it('names the exact frequency for screen readers and on hover', () => {
+    render(<NoteTile {...base} note={cSharp4} />);
 
-    expect(
-      screen.getByRole('button', { name: /play C♯4, 277\.18 hertz/i }),
-    ).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: /play C♯4, 277\.18 hertz/i });
+    expect(button).toHaveAttribute('title', expect.stringContaining('277.18 Hz'));
   });
 
   it('reports the note upward when clicked', async () => {
     const onPlay = vi.fn();
     const user = userEvent.setup();
-    render(
-      <NoteTile
-        note={middleC}
-        onPlay={onPlay}
-        isActive={false}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
+    render(<NoteTile {...base} note={middleC} onPlay={onPlay} />);
 
     await user.click(screen.getByRole('button'));
 
     expect(onPlay).toHaveBeenCalledExactlyOnceWith(middleC);
   });
 
-  it('looks physically depressed while flashing from a click', () => {
-    const { rerender } = render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
-    expect(screen.getByRole('button').className).not.toContain('keycap-pressed');
+  it('tints while flashing from a click', () => {
+    const { rerender } = render(<NoteTile {...base} note={middleC} />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'idle');
 
-    rerender(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
-    expect(screen.getByRole('button').className).toContain('keycap-pressed');
+    rerender(<NoteTile {...base} note={middleC} isActive />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'active');
+  });
+
+  it('sets accidentals apart without leaving the light palette', () => {
+    render(<NoteTile {...base} note={cSharp4} />);
+    expect(screen.getByRole('button').className).toContain('bg-recess');
+
+    render(<NoteTile {...base} note={middleC} />);
+    expect(screen.getAllByRole('button')[1].className).toContain('bg-panel');
   });
 });
 
 describe('NoteTile while a note is being heard', () => {
-  it('shows cents off instead of the reference frequency', () => {
-    render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={-14}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
+  it('shows how far off it is, signed', () => {
+    const { rerender } = render(
+      <NoteTile {...base} note={middleC} detectedCents={-14} />,
     );
-
     expect(screen.getByText('-14')).toBeInTheDocument();
-    expect(screen.queryByText('262')).not.toBeInTheDocument();
-  });
 
-  it('signs a sharp reading', () => {
-    render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={7}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
-
+    rerender(<NoteTile {...base} note={middleC} detectedCents={7} />);
     expect(screen.getByText('+7')).toBeInTheDocument();
   });
 
-  it('borders green when in tune and red when not', () => {
-    const { rerender } = render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={3}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
-    expect(screen.getByRole('button').className).toContain('border-intune');
+  it('turns green when in tune and stays neutral when not', () => {
+    const { rerender } = render(<NoteTile {...base} note={middleC} detectedCents={3} />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'in-tune');
 
-    rerender(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={35}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
-    expect(screen.getByRole('button').className).toContain('border-signal');
+    rerender(<NoteTile {...base} note={middleC} detectedCents={35} />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'out');
   });
 
   it('respects a widened tolerance', () => {
-    // 18 cents is out of tune at the default, in tune at ±25.
+    // 18 cents is out at the default, in tune at ±25.
     const { rerender } = render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={18}
-        tolerance={10}
-        notation="western"
-        tonic={0}
-      />,
+      <NoteTile {...base} note={middleC} detectedCents={18} tolerance={10} />,
     );
-    expect(screen.getByRole('button').className).toContain('border-signal');
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'out');
 
-    rerender(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={18}
-        tolerance={25}
-        notation="western"
-        tonic={0}
-      />,
-    );
-    expect(screen.getByRole('button').className).toContain('border-intune');
+    rerender(<NoteTile {...base} note={middleC} detectedCents={18} tolerance={25} />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'in-tune');
   });
 
   it('marks the heard tile as current for assistive tech', () => {
-    render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive={false}
-        detectedCents={0}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
+    render(<NoteTile {...base} note={middleC} detectedCents={0} />);
 
     expect(screen.getByRole('button')).toHaveAttribute('aria-current', 'true');
   });
 
   it('lets the heard state win over the click flash', () => {
-    render(
-      <NoteTile
-        note={middleC}
-        onPlay={() => {}}
-        isActive
-        detectedCents={2}
-        tolerance={IN_TUNE_CENTS}
-        notation="western"
-        tonic={0}
-      />,
-    );
+    render(<NoteTile {...base} note={middleC} isActive detectedCents={2} />);
 
-    const className = screen.getByRole('button').className;
-    expect(className).toContain('border-intune');
-    expect(className).not.toContain('keycap-pressed');
+    // Hearing a note outranks the click flash.
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'in-tune');
   });
 });

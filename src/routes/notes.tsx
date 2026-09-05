@@ -128,11 +128,16 @@ function Shell({
   return (
     <div className="flex h-screen flex-col gap-2.5 overflow-hidden p-4">
       <header className="flex shrink-0 items-end justify-between px-0.5">
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-center gap-3">
           <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em]">
             notes
           </h1>
-          <Link to="/" className="mono-label hover:text-graphite">
+          <Link
+            to="/"
+            className={
+              'keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed'
+            }
+          >
             &larr; tuner
           </Link>
         </div>

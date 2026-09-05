@@ -43,8 +43,11 @@ test('moving Sa renames every key', async () => {
   const { context, page } = await openApp('notation-tonic');
 
   await page.getByRole('button', { name: 'sargam' }).click();
-  // Sa on D, the scordatura case that motivated a movable tonic.
+  // Sa on D, the scordatura case that motivated a movable tonic. The tonic
+  // lives in the controls popover now.
+  await page.getByRole('button', { name: 'controls' }).click();
   await page.getByLabel('tonic').selectOption('2');
+  await page.keyboard.press('Escape');
 
   await expect(page.getByRole('button', { name: /^Play Sa, D4,/ })).toBeVisible();
   // C is now komal Ni rather than Sa.

@@ -37,6 +37,8 @@ async function openApp(name: string) {
 
   const page = await context.newPage();
   await page.goto(BASE_URL);
+  // Tonic and the drone live in the controls popover now.
+  await page.getByRole('button', { name: 'controls' }).click();
   return { context, page };
 }
 
@@ -91,6 +93,7 @@ test('the tonic is reachable in Western notation too', async () => {
     'true',
   );
   await expect(page.getByLabel('tonic')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'controls' })).toBeVisible();
 
   await context.close();
 });
