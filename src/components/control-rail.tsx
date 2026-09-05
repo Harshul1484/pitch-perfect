@@ -76,7 +76,11 @@ export function ControlRail({
       <div className="mt-auto flex w-full shrink-0 flex-col items-center gap-2 border-t border-hairline-soft pt-2.5">
         <label className="flex w-full flex-col items-center gap-1">
           <span className="mono-label">tonic</span>
-          <Tooltip label="root for the drone, and Sa in sargam" side="right" className="w-full">
+          <Tooltip
+            label="root for the drone, and Sa in sargam"
+            side="right"
+            className="w-full"
+          >
             <select
               value={tonic}
               onChange={(event) => onTonicChange(Number(event.target.value))}
@@ -97,7 +101,11 @@ export function ControlRail({
           </Tooltip>
         </label>
 
-        <Tooltip label="sustained tonic, fifth and octave" side="right" className="w-full">
+        <Tooltip
+          label="sustained tonic, fifth and octave"
+          side="right"
+          className="w-full"
+        >
           <button
             type="button"
             onClick={onDroneToggle}

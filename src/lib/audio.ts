@@ -37,18 +37,19 @@ const SILENCE = 0.0001;
  * Play a single tone. Returns false when Web Audio is unavailable, which is
  * the case in jsdom and in browsers that block audio entirely.
  */
-export function playFrequency(frequency: number, options: PlayOptions = {}): boolean {
-  const { durationSeconds = DEFAULT_DURATION, volume = 1 } = options;
-
+/**
+ * Sound a tone at a given AudioContext time. Notation playback schedules a
+ * whole phrase ahead of time, so it needs to say when each note starts rather
+ * than only being able to play one now.
+ */
+export function scheduleTone(
+  frequency: number,
+  startedAt: number,
+  durationSeconds: number,
+  volume: number,
+): boolean {
   const ctx = getAudioContext();
-  if (!ctx) return false;
-  if (volume <= 0) return false;
-
-  if (ctx.state === 'suspended') {
-    void ctx.resume();
-  }
-
-  const startedAt = ctx.currentTime;
+  if (!ctx || volume <= 0) return false;
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
 
@@ -69,4 +70,15 @@ export function playFrequency(frequency: number, options: PlayOptions = {}): boo
   oscillator.stop(startedAt + durationSeconds);
 
   return true;
+}
+
+/** Sound a tone immediately. */
+export function playFrequency(frequency: number, options: PlayOptions = {}): boolean {
+  const { durationSeconds = DEFAULT_DURATION, volume = 1 } = options;
+
+  const ctx = getAudioContext();
+  if (!ctx) return false;
+  if (ctx.state === 'suspended') void ctx.resume();
+
+  return scheduleTone(frequency, ctx.currentTime, durationSeconds, volume);
 }

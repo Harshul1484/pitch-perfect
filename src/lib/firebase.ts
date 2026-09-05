@@ -1,5 +1,10 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { GoogleAuthProvider, getAuth, type Auth } from 'firebase/auth';
+import {
+  GoogleAuthProvider,
+  connectAuthEmulator,
+  getAuth,
+  type Auth,
+} from 'firebase/auth';
 
 /**
  * Firebase setup.
@@ -29,6 +34,18 @@ export function missingConfigKeys(
 
 export const isFirebaseConfigured = missingConfigKeys().length === 0;
 
+/**
+ * Point at the local emulators instead of the real project.
+ *
+ * Development only, and opt-in per page load, so an end-to-end test can drive
+ * the full sign-in and save path with a throwaway user. The DEV check means
+ * this cannot be switched on in a production build.
+ */
+export function emulatorsRequested(): boolean {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('emulator') === '1';
+}
+
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 
@@ -41,8 +58,21 @@ export function getFirebaseAuth(): Auth | null {
   if (!isFirebaseConfigured) return null;
 
   app ??= initializeApp(config);
-  auth ??= getAuth(app);
+  if (!auth) {
+    auth = getAuth(app);
+    if (emulatorsRequested()) {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    }
+  }
   return auth;
+}
+
+/** The shared app instance, for modules that add their own Firebase service. */
+export function getFirebaseApp(): FirebaseApp | null {
+  if (!isFirebaseConfigured) return null;
+
+  app ??= initializeApp(config);
+  return app;
 }
 
 export function googleProvider(): GoogleAuthProvider {

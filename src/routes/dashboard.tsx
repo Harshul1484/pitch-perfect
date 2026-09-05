@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import {
   ALL_NOTES,
   IN_TUNE_CENTS,
@@ -81,6 +82,9 @@ export function Dashboard() {
           <p className="mono-label">
             tuning instrument · {ALL_NOTES.length} keys · a4 = 440 hz
           </p>
+          <Link to="/notes" className="mono-label hover:text-graphite">
+            notes &rarr;
+          </Link>
         </div>
         <div className="flex items-center gap-4">
           <NotationSwitch notation={notation} onNotationChange={setNotation} />

@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Compositions are private to their owner. Nesting them under the user's
+    // id makes that structural rather than a field that has to be checked.
+    match /users/{uid}/compositions/{compositionId} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isWellFormed();
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+function isOwner(uid) {
+  return request.auth != null && request.auth.uid == uid;
+}
+
+// Shape and size limits, so a compromised client cannot store arbitrary
+// documents or exhaust the quota with one enormous write.
+function isWellFormed() {
+  let data = request.resource.data;
+  return data.keys().hasOnly(['title', 'notation', 'tonic', 'createdAt', 'updatedAt'])
+    && data.title is string && data.title.size() <= 200
+    && data.notation is string && data.notation.size() <= 20000
+    && data.tonic is int && data.tonic >= 0 && data.tonic <= 11;
+}

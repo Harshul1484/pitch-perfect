@@ -53,11 +53,16 @@ export function degreeFrom(midi: number, tonic: number): number {
   return ((((midi % 12) - tonic) % 12) + 12) % 12;
 }
 
+/** The written form of a degree above Sa, with no saptak of its own. */
+export function swaraOfDegree(degree: number): Omit<Swara, 'saptak'> {
+  return DEGREES[((degree % 12) + 12) % 12];
+}
+
 export function swaraFor(midi: number, tonic: number): Swara {
   const madhyaSa = tonic + 12 * (MADHYA_OCTAVE + 1);
 
   return {
-    ...DEGREES[degreeFrom(midi, tonic)],
+    ...swaraOfDegree(degreeFrom(midi, tonic)),
     saptak: Math.floor((midi - madhyaSa) / 12),
   };
 }

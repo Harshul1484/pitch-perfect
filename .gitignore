@@ -12,3 +12,8 @@ coverage
 .e2e-profile/
 test-results/
 playwright-report/
+
+# firebase local artefacts
+.firebase/
+*-debug.log
+emu.out
