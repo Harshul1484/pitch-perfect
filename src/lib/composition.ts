@@ -130,3 +130,14 @@ export function deleteLast(lines: Line[]): Line[] {
     index === lines.length - 1 ? line.slice(0, -1) : line,
   );
 }
+
+/**
+ * The reverse of midiFor: turn a sounded pitch back into a token relative to
+ * Sa. Used when a recording is saved as notation.
+ */
+export function tokenFromMidi(midi: number, tonic: number): NoteToken {
+  const fromSa = midi - (tonic + 60);
+  const degree = ((fromSa % 12) + 12) % 12;
+
+  return { kind: 'note', degree, saptak: Math.floor(fromSa / 12) };
+}

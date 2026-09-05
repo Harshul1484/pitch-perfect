@@ -17,3 +17,6 @@ playwright-report/
 .firebase/
 *-debug.log
 emu.out
+shot.mts
+crop.mts
+dbg.mts

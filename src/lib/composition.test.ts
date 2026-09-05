@@ -10,6 +10,7 @@ import {
   midiFor,
   parseNotation,
   serializeLines,
+  tokenFromMidi,
   type Line,
 } from './composition';
 
@@ -152,5 +153,31 @@ describe('countNotes', () => {
   it('counts notes and ignores sustains', () => {
     expect(countNotes(parseNotation('S - R -\nG'))).toBe(3);
     expect(countNotes([])).toBe(0);
+  });
+});
+
+describe('tokenFromMidi', () => {
+  it('is the inverse of midiFor', () => {
+    for (let tonic = 0; tonic < 12; tonic += 1) {
+      for (let midi = 36; midi <= 96; midi += 1) {
+        expect(midiFor(tokenFromMidi(midi, tonic), tonic)).toBe(midi);
+      }
+    }
+  });
+
+  it('puts madhya Sa at the tonic in octave 4', () => {
+    expect(tokenFromMidi(60, 0)).toEqual(note(0));
+    expect(tokenFromMidi(62, 2)).toEqual(note(0));
+  });
+
+  it('reads degrees against the tonic', () => {
+    // With Sa on D, A is Pa and C is komal Ni below.
+    expect(tokenFromMidi(69, 2)).toEqual(note(7));
+    expect(tokenFromMidi(60, 2)).toEqual(note(10, -1));
+  });
+
+  it('marks saptak above and below', () => {
+    expect(tokenFromMidi(72, 0)).toEqual(note(0, 1));
+    expect(tokenFromMidi(48, 0)).toEqual(note(0, -1));
   });
 });

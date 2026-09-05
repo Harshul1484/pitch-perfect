@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { IN_TUNE_CENTS, frequencyOf, nearestNote, type Note } from '../lib/notes';
 import { playFrequency } from '../lib/audio';
 import { useAuth } from '../hooks/use-auth';
+import { useRecorder } from '../hooks/use-recorder';
 import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
@@ -12,6 +13,7 @@ import { ControlsPopover } from '../components/controls-popover';
 import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
 import { MetronomePanel } from '../components/metronome-panel';
+import { RecordControl } from '../components/record-control';
 import { TunerColumn } from '../components/tuner-column';
 
 /** How long a key stays depressed after being clicked. */
@@ -36,11 +38,14 @@ export function Dashboard() {
   // Sa in octave 3, a comfortable register to drone under a violin.
   const drone = useDrone(frequencyOf(tonic + 48), 1);
   const auth = useAuth();
+  const uid = auth.user?.uid ?? null;
 
   const match = useMemo(
     () => (reading ? nearestNote(reading.frequency) : null),
     [reading],
   );
+
+  const recorder = useRecorder(match, tolerance);
 
   useEffect(() => {
     return () => {
@@ -81,6 +86,27 @@ export function Dashboard() {
           </Link>
           <span aria-hidden="true" className="h-4 w-px bg-hairline" />
           <NotationSwitch notation={notation} onNotationChange={setNotation} />
+          <RecordControl
+            isRecording={recorder.isRecording}
+            elapsedMs={recorder.elapsedMs}
+            disabled={status !== 'listening'}
+            onToggle={recorder.isRecording ? recorder.stop : recorder.start}
+            summary={recorder.summary}
+            tolerance={tolerance}
+            notation={notation}
+            tonic={tonic}
+            onSave={
+              uid === null
+                ? null
+                : async (title, text) => {
+                    // Loaded on demand: Firestore is the heaviest thing in the
+                    // app and the tuner otherwise never needs it.
+                    const { saveRecording } = await import('../lib/save-recording');
+                    await saveRecording(uid, title, text, tonic);
+                  }
+            }
+            onDiscard={recorder.discard}
+          />
           <ControlsPopover
             tolerance={tolerance}
             onToleranceChange={setTolerance}
