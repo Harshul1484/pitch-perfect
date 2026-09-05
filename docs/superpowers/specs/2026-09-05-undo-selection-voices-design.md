@@ -110,3 +110,31 @@ scheduled correctly, but timbre is a judgement only listening can make.
 
 - No drag-select; Shift-click and Shift-arrow only.
 - Undo is per session, not stored with the piece.
+
+## Settings that persist
+
+Tolerance, sustain, tempo and tonic now survive a reload alongside notation and
+voice, kept in localStorage and shared by both routes. They belong to the
+player, not to the page or the session.
+
+`useNumberPreference` had a real bug on first write: a missing key reads as
+`null`, and `Number(null)` is `0`, which sails through any range check that
+includes zero. It now checks for the missing key before converting. There is a
+test for exactly that case.
+
+A stored value outside the current range is discarded rather than clamped. Out
+of bounds means the range has changed since it was written, and today's default
+is the better answer than yesterday's edge.
+
+## A piece's tonic
+
+It was fixed at C on creation and shown read-only. It is now a selector.
+
+Because notation is stored as degrees relative to Sa, **changing the tonic
+transposes the piece rather than rewriting it** — which is the whole point of
+storing degrees. The end-to-end test writes Sa and Pa with Sa on C, sees C4 and
+G4, moves Sa to D, sees D4 and A4, and confirms that in sargam they are still
+Sa and Pa because the degrees never moved.
+
+The Firestore rules already allowed and bounded `tonic`, so nothing had to
+change there.

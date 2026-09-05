@@ -220,3 +220,32 @@ test('names the written notes in Western or sargam, on demand', async () => {
 
   await context.close();
 });
+
+test('changing a piece tonic transposes it rather than rewriting it', async () => {
+  const { context, page } = await openSignedIn('notes-tonic');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+
+  await page.getByRole('button', { name: 'western' }).click();
+  // Sa and Pa with Sa on C: C4 and G4.
+  await page.keyboard.press('S');
+  await page.keyboard.press('P');
+  await expect(written.getByText('C4', { exact: true })).toBeVisible();
+  await expect(written.getByText('G4', { exact: true })).toBeVisible();
+
+  // Move Sa to D. The stored notation is degrees, so the piece transposes.
+  await page.getByLabel('tonic of this piece').selectOption('2');
+
+  await expect(written.getByText('D4', { exact: true })).toBeVisible();
+  await expect(written.getByText('A4', { exact: true })).toBeVisible();
+  await expect(written.getByText('C4', { exact: true })).toHaveCount(0);
+
+  // In sargam it is still Sa and Pa, because the degrees never moved.
+  await page.getByRole('button', { name: 'sargam' }).click();
+  await expect(written.getByText('Sa', { exact: true })).toBeVisible();
+  await expect(written.getByText('Pa', { exact: true })).toBeVisible();
+
+  await context.close();
+});

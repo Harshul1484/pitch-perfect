@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { IN_TUNE_CENTS, frequencyOf, nearestNote, type Note } from '../lib/notes';
 import { VOICES, playFrequency, type Voice } from '../lib/audio';
 import { useAuth } from '../hooks/use-auth';
-import { usePreference } from '../hooks/use-preference';
+import { useNumberPreference, usePreference } from '../hooks/use-preference';
 import { useRecorder } from '../hooks/use-recorder';
 import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
@@ -13,6 +13,7 @@ import { AccountControl } from '../components/account-control';
 import { ControlsPopover } from '../components/controls-popover';
 import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
+import { MAX_BPM, MIN_BPM } from '../lib/metronome';
 import { MetronomePanel } from '../components/metronome-panel';
 import { RecordControl } from '../components/record-control';
 import { TunerColumn } from '../components/tuner-column';
@@ -22,19 +23,25 @@ const FLASH_MS = 260;
 
 export function Dashboard() {
   const [activeMidi, setActiveMidi] = useState<number | null>(null);
-  const [tolerance, setTolerance] = useState(IN_TUNE_CENTS);
+  // Settings the player sets once and expects to find again next time.
+  const [tolerance, setTolerance] = useNumberPreference(
+    'pitch.tolerance',
+    IN_TUNE_CENTS,
+    2,
+    30,
+  );
   /** Reference tone length, in tenths of a second. */
-  const [sustain, setSustain] = useState(14);
+  const [sustain, setSustain] = useNumberPreference('pitch.sustain', 14, 2, 30);
   const flashTimer = useRef<number | null>(null);
 
-  const [bpm, setBpm] = useState(90);
+  const [bpm, setBpm] = useNumberPreference('pitch.bpm', 90, MIN_BPM, MAX_BPM);
   const [notation, setNotation] = usePreference<Notation>('pitch.notation', 'western', [
     'western',
     'sargam',
   ]);
   const [voice, setVoice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
   /** Pitch class shown as Sa. C by default; movable, as sargam requires. */
-  const [tonic, setTonic] = useState(0);
+  const [tonic, setTonic] = useNumberPreference('pitch.tonic', 0, 0, 11);
 
   const { status, reading, error, start, stop } = usePitchDetection();
   // Output level is the operating system's job, so everything plays at full

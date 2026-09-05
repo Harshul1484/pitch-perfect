@@ -30,7 +30,10 @@ export interface CompositionsState {
   items: Composition[];
   error: string | null;
   create: (title: string, tonic: number) => Promise<string | null>;
-  save: (id: string, changes: { title?: string; notation?: string }) => Promise<void>;
+  save: (
+    id: string,
+    changes: { title?: string; notation?: string; tonic?: number },
+  ) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -123,7 +126,10 @@ export function useCompositions(uid: string | null): CompositionsState {
   );
 
   const save = useCallback(
-    async (id: string, changes: { title?: string; notation?: string }) => {
+    async (
+      id: string,
+      changes: { title?: string; notation?: string; tonic?: number },
+    ) => {
       const db = getDb();
       if (!db || !path) return;
 

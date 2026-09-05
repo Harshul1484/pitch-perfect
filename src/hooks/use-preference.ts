@@ -41,3 +41,43 @@ export function usePreference<T extends string>(
 
   return [value, update];
 }
+
+/**
+ * The same, for a numeric setting. Values outside the range are ignored rather
+ * than clamped: a stored number out of bounds means the range has changed
+ * since it was written, and the current default is the better answer.
+ */
+export function useNumberPreference(
+  key: string,
+  fallback: number,
+  min: number,
+  max: number,
+): [number, (value: number) => void] {
+  const [value, setValue] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) return fallback;
+
+      const stored = Number(raw);
+      return Number.isFinite(stored) && stored >= min && stored <= max
+        ? stored
+        : fallback;
+    } catch {
+      return fallback;
+    }
+  });
+
+  const update = useCallback(
+    (next: number) => {
+      setValue(next);
+      try {
+        window.localStorage.setItem(key, String(next));
+      } catch {
+        // Not being able to remember the choice is not a reason to ignore it.
+      }
+    },
+    [key],
+  );
+
+  return [value, update];
+}

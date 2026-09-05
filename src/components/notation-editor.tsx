@@ -51,6 +51,9 @@ import { SwaraKeyboard } from './swara-keyboard';
 const KEY =
   'keycap keycap-pressable hover:border-engrave hover:bg-white active:keycap-pressed';
 
+const SELECT_ARROW =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 0h8L4 5z' fill='%238a8a84'/></svg>\")";
+
 /** Saved this long after you stop typing. */
 const SAVE_DEBOUNCE_MS = 800;
 
@@ -62,7 +65,10 @@ interface DocState {
 
 interface NotationEditorProps {
   composition: Composition;
-  onSave: (id: string, changes: { title?: string; notation?: string }) => Promise<void>;
+  onSave: (
+    id: string,
+    changes: { title?: string; notation?: string; tonic?: number },
+  ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
@@ -342,9 +348,23 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
 
         <label className="flex items-center gap-1.5">
           <span className="mono-label">sa</span>
-          <span className="keycap bg-panel px-2.5 py-1.5 font-mono text-[11px]">
-            {TONICS[composition.tonic]}
-          </span>
+          <select
+            value={composition.tonic}
+            onChange={(event) => void onSave(id, { tonic: Number(event.target.value) })}
+            aria-label="tonic of this piece"
+            className="keycap keycap-pressable cursor-pointer appearance-none py-1.5 pl-2.5 pr-5 text-center font-mono text-[11px] tabular-nums hover:border-engrave"
+            style={{
+              backgroundImage: SELECT_ARROW,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 6px center',
+            }}
+          >
+            {TONICS.map((name, pitchClass) => (
+              <option key={name} value={pitchClass}>
+                {name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <button
