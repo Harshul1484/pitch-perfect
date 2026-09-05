@@ -168,7 +168,12 @@ describe('toTokens', () => {
 
   it('counts holds toward the bar, not just notes', () => {
     // A note of three beats, then two more: the bar falls after the fourth.
-    const tokens = toTokens([at(60, 0, 1500), at(62, 1500, 500), at(64, 2000, 500)], 0, BPM, 4);
+    const tokens = toTokens(
+      [at(60, 0, 1500), at(62, 1500, 500), at(64, 2000, 500)],
+      0,
+      BPM,
+      4,
+    );
 
     expect(serializeLines([tokens])).toBe('S - - R | G');
   });

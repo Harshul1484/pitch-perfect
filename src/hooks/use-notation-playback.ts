@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAudioContext, scheduleTone } from '../lib/audio';
+import { getAudioContext, scheduleTone, type Voice } from '../lib/audio';
 import type { Line } from '../lib/composition';
 import { frequencyOf } from '../lib/notes';
 import { beatAt, beatSeconds, buildSchedule, tokenAtBeat } from '../lib/playback';
@@ -29,6 +29,7 @@ export function useNotationPlayback(
   tonic: number,
   bpm: number,
   volume: number,
+  voice: Voice = 'violin',
 ): NotationPlayback {
   const [isPlaying, setIsPlaying] = useState(false);
   const [token, setToken] = useState<number | null>(null);
@@ -67,6 +68,7 @@ export function useNotationPlayback(
         startedAt + item.startBeat * perBeat,
         Math.max(item.beats * perBeat - GAP_SECONDS, 0.04),
         volume,
+        voice,
       );
     }
 
@@ -85,7 +87,7 @@ export function useNotationPlayback(
     };
 
     frameRef.current = requestAnimationFrame(follow);
-  }, [lines, tonic, bpm, volume, stop]);
+  }, [lines, tonic, bpm, volume, voice, stop]);
 
   useEffect(() => stop, [stop]);
 

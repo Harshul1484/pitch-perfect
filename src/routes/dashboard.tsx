@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { IN_TUNE_CENTS, frequencyOf, nearestNote, type Note } from '../lib/notes';
-import { playFrequency } from '../lib/audio';
+import { VOICES, playFrequency, type Voice } from '../lib/audio';
 import { useAuth } from '../hooks/use-auth';
+import { usePreference } from '../hooks/use-preference';
 import { useRecorder } from '../hooks/use-recorder';
 import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
@@ -27,7 +28,11 @@ export function Dashboard() {
   const flashTimer = useRef<number | null>(null);
 
   const [bpm, setBpm] = useState(90);
-  const [notation, setNotation] = useState<Notation>('western');
+  const [notation, setNotation] = usePreference<Notation>('pitch.notation', 'western', [
+    'western',
+    'sargam',
+  ]);
+  const [voice, setVoice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
   /** Pitch class shown as Sa. C by default; movable, as sargam requires. */
   const [tonic, setTonic] = useState(0);
 
@@ -57,7 +62,7 @@ export function Dashboard() {
 
   const handlePlay = useCallback(
     (note: Note) => {
-      playFrequency(note.frequency, { durationSeconds: sustain / 10 });
+      playFrequency(note.frequency, { durationSeconds: sustain / 10, voice });
       setActiveMidi(note.midi);
 
       if (flashTimer.current !== null) {
@@ -65,7 +70,7 @@ export function Dashboard() {
       }
       flashTimer.current = window.setTimeout(() => setActiveMidi(null), FLASH_MS);
     },
-    [sustain],
+    [sustain, voice],
   );
 
   return (
@@ -117,6 +122,8 @@ export function Dashboard() {
             onTonicChange={setTonic}
             droneOn={drone.isOn}
             onDroneToggle={drone.toggle}
+            voice={voice}
+            onVoiceChange={setVoice}
           />
           <span aria-hidden="true" className="h-4 w-px bg-hairline" />
           <AccountControl {...auth} />

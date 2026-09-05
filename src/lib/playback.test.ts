@@ -146,3 +146,32 @@ describe('tokenAtBeat', () => {
     expect(tokenAtBeat(withBar, 1)).toBe(2);
   });
 });
+
+describe('a tie at the edge of a line', () => {
+  it('joins the beat that ended the line above, since lines run on', () => {
+    // The tie is the first thing on line two.
+    const notes = sounding('S R\n~G');
+
+    expect(notes.map((item) => item.startBeat)).toEqual([0, 1, 1.5]);
+    // R and G share the second beat.
+    expect(notes[1].beats).toBe(0.5);
+    expect(notes[2].beats).toBe(0.5);
+    expect(scheduleOf('S R\n~G').totalBeats).toBe(2);
+  });
+
+  it('starts its own beat when there is nothing before it at all', () => {
+    // Nothing precedes it, so there is no beat to join.
+    const notes = sounding('~S R');
+
+    expect(notes.map((item) => item.startBeat)).toEqual([0, 1]);
+    expect(notes[0].beats).toBe(1);
+    expect(scheduleOf('~S R').totalBeats).toBe(2);
+  });
+
+  it('starts its own beat after a bar, which ends the beat before it', () => {
+    const notes = sounding('S | ~R');
+
+    expect(notes.map((item) => item.startBeat)).toEqual([0, 1]);
+    expect(notes[1].beats).toBe(1);
+  });
+});

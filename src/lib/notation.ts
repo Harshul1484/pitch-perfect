@@ -9,6 +9,8 @@ import { NOTE_NAMES, type Note } from './notes';
  */
 export type Notation = 'western' | 'sargam';
 
+export const NOTATIONS: readonly Notation[] = ['western', 'sargam'];
+
 export interface Swara {
   /** The bare letters: Sa Re Ga Ma Pa Dha Ni. Diacritics are rendered. */
   text: string;

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { VOICES, type Voice } from '../lib/audio';
 import { TONICS } from '../lib/notation';
+import { Segmented } from './segmented';
 import { Knob } from './knob';
 
 interface ControlsPopoverProps {
@@ -11,6 +13,8 @@ interface ControlsPopoverProps {
   onTonicChange: (tonic: number) => void;
   droneOn: boolean;
   onDroneToggle: () => void;
+  voice: Voice;
+  onVoiceChange: (voice: Voice) => void;
 }
 
 const KEY =
@@ -103,6 +107,13 @@ export function ControlsPopover(props: ControlsPopoverProps) {
             </div>
 
             <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
+
+            <Segmented
+              label="voice"
+              value={props.voice}
+              options={VOICES}
+              onChange={props.onVoiceChange}
+            />
 
             <label className="flex items-center justify-between gap-2">
               <span className="mono-label">tonic</span>

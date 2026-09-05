@@ -1,11 +1,15 @@
 import { DEGREE_LETTERS } from '../lib/composition';
-import { swaraOfDegree } from '../lib/notation';
+import { swaraOfDegree, type Notation } from '../lib/notation';
+import { NOTE_NAMES } from '../lib/notes';
 import { Swara } from './swara';
 
 interface SwaraKeyboardProps {
   /** Saptak applied to the next note entered: -1, 0 or +1. */
   saptak: number;
   onSaptakChange: (saptak: number) => void;
+  notation: Notation;
+  /** Pitch class of Sa, needed to name the keys the Western way. */
+  tonic: number;
   /** Whether the next note joins the beat before it. */
   tie: boolean;
   onTieToggle: () => void;
@@ -36,6 +40,8 @@ const KEY =
 export function SwaraKeyboard({
   saptak,
   onSaptakChange,
+  notation,
+  tonic,
   tie,
   onTieToggle,
   onNote,
@@ -47,7 +53,7 @@ export function SwaraKeyboard({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="mono-label">swaras</span>
+        <span className="mono-label">{notation === 'western' ? 'notes' : 'swaras'}</span>
 
         <div role="group" aria-label="saptak" className="flex gap-1">
           {SAPTAKS.map((option) => (
@@ -77,12 +83,22 @@ export function SwaraKeyboard({
               key={letter}
               type="button"
               onClick={() => onNote(degree)}
-              aria-label={`insert ${swara.komal ? 'komal ' : ''}${swara.tivra ? 'tivra ' : ''}${swara.text}`}
+              aria-label={
+                notation === 'western'
+                  ? `insert ${NOTE_NAMES[(tonic + degree) % 12]}`
+                  : `insert ${swara.komal ? 'komal ' : ''}${swara.tivra ? 'tivra ' : ''}${swara.text}`
+              }
               className={`${KEY} flex aspect-square flex-col items-center justify-center gap-1 ${
                 swara.komal || swara.tivra ? 'bg-cap-dark bg-none' : ''
               }`}
             >
-              <Swara swara={swara} className="text-[13px] font-medium" />
+              {notation === 'western' ? (
+                <span className="text-[13px] font-medium leading-none">
+                  {NOTE_NAMES[(tonic + degree) % 12]}
+                </span>
+              ) : (
+                <Swara swara={swara} className="text-[13px] font-medium" />
+              )}
               <span className="font-mono text-[9px] leading-none text-engrave">
                 {letter}
               </span>

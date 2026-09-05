@@ -17,7 +17,9 @@ import { BASE_URL } from '../playwright.config';
 
 const NOTES_URL = `${BASE_URL}/notes?emulator=1`;
 
-async function openSignedIn(name: string): Promise<{ context: import('@playwright/test').BrowserContext; page: Page }> {
+async function openSignedIn(
+  name: string,
+): Promise<{ context: import('@playwright/test').BrowserContext; page: Page }> {
   const profile = resolve('.e2e-profile', name);
   mkdirSync(profile, { recursive: true });
 
@@ -58,6 +60,9 @@ test('writes a phrase, saves it, and still has it after a reload', async () => {
   const { context, page } = await openSignedIn('notes');
 
   await page.getByRole('button', { name: 'new' }).click();
+  await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
+  // Pin the naming, rather than depending on a remembered preference.
+  await page.getByRole('button', { name: 'sargam' }).click();
 
   // Type the opening of the notebook phrase: Sa Re ma Pa, then hold.
   await page.getByRole('button', { name: 'insert Sa' }).click();
@@ -124,16 +129,14 @@ test('one user cannot see another user notes', async () => {
   const first = await openSignedIn('notes-user-a');
   await first.page.getByRole('button', { name: 'new' }).click();
   await first.page.getByLabel('title').fill('Private to A');
-  await expect(
-    first.page.getByRole('button', { name: 'Private to A' }),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(first.page.getByRole('button', { name: 'Private to A' })).toBeVisible({
+    timeout: 15_000,
+  });
   await first.context.close();
 
   const second = await openSignedIn('notes-user-b');
   await expect(second.page.getByText('nothing yet')).toBeVisible({ timeout: 15_000 });
-  await expect(
-    second.page.getByRole('button', { name: 'Private to A' }),
-  ).toHaveCount(0);
+  await expect(second.page.getByRole('button', { name: 'Private to A' })).toHaveCount(0);
   await second.context.close();
 });
 
@@ -141,8 +144,9 @@ test('corrects a note in the middle of a line, not just at the end', async () =>
   const { context, page } = await openSignedIn('notes-caret');
 
   await page.getByRole('button', { name: 'new' }).click();
-  const written = page.getByRole('group', { name: 'notation' });
+  const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
+  await page.getByRole('button', { name: 'sargam' }).click();
 
   for (const key of ['S', 'R', 'P', 'G']) await page.keyboard.press(key);
 
@@ -165,7 +169,7 @@ test('writes bar lines and ties', async () => {
   const { context, page } = await openSignedIn('notes-bars');
 
   await page.getByRole('button', { name: 'new' }).click();
-  const written = page.getByRole('group', { name: 'notation' });
+  const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
   await page.keyboard.press('S');
@@ -187,9 +191,32 @@ test('writes bar lines and ties', async () => {
   });
   await page.getByRole('button', { name: 'Untitled' }).click();
 
-  const reloaded = page.getByRole('group', { name: 'notation' });
+  const reloaded = page.getByRole('group', { name: 'written notation' });
   await expect(reloaded.locator('[data-bar]')).toHaveCount(1);
   await expect(reloaded.locator('[data-tie]')).toHaveCount(1);
+
+  await context.close();
+});
+
+test('names the written notes in Western or sargam, on demand', async () => {
+  const { context, page } = await openSignedIn('notes-notation');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+
+  // A new piece has Sa on C, so the tonic itself is C4.
+  await page.getByRole('button', { name: 'sargam' }).click();
+  await page.keyboard.press('S');
+  await page.keyboard.press('P');
+  await expect(written.getByText('Sa', { exact: true })).toBeVisible();
+  await expect(written.getByText('Pa', { exact: true })).toBeVisible();
+
+  // The same two notes, named the Western way.
+  await page.getByRole('button', { name: 'western' }).click();
+  await expect(written.getByText('C4', { exact: true })).toBeVisible();
+  await expect(written.getByText('G4', { exact: true })).toBeVisible();
+  await expect(written.getByText('Sa', { exact: true })).toHaveCount(0);
 
   await context.close();
 });

@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
 import type { Caret } from '../lib/caret';
 import type { Line } from '../lib/composition';
-import { swaraOfDegree } from '../lib/notation';
+import type { Range } from '../lib/selection';
+import { midiFor } from '../lib/composition';
+import { swaraOfDegree, type Notation } from '../lib/notation';
+import { noteAt } from '../lib/notes';
 import { Swara } from './swara';
 
 interface NotationViewProps {
@@ -9,7 +12,12 @@ interface NotationViewProps {
   /** Index of the token sounding, counted across all lines. */
   playingIndex: number | null;
   caret: Caret;
-  onCaretChange: (caret: Caret) => void;
+  /** The highlighted run, in document order, or null when nothing is selected. */
+  selection: Range | null;
+  notation: Notation;
+  /** Pitch class of Sa, needed to name notes the Western way. */
+  tonic: number;
+  onCaretChange: (caret: Caret, extend: boolean) => void;
 }
 
 /**
@@ -26,8 +34,20 @@ export function NotationView({
   lines,
   playingIndex,
   caret,
+  selection,
+  notation,
+  tonic,
   onCaretChange,
 }: NotationViewProps) {
+  /** Whether the token at this position falls inside the selection. */
+  const selected = (line: number, index: number): boolean => {
+    if (selection === null) return false;
+    const { start, end } = selection;
+
+    const afterStart = line > start.line || (line === start.line && index >= start.index);
+    const beforeEnd = line < end.line || (line === end.line && index < end.index);
+    return afterStart && beforeEnd;
+  };
   // Where each line starts in the flat token numbering.
   const offsets = useMemo(() => {
     const starts: number[] = [];
@@ -44,7 +64,7 @@ export function NotationView({
   return (
     <div
       role="group"
-      aria-label="notation"
+      aria-label="written notation"
       className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
     >
       {empty && (
@@ -61,7 +81,7 @@ export function NotationView({
             <CaretSlot
               key={`gap-${index}`}
               active={caret.line === lineIndex && caret.index === index}
-              onClick={() => onCaretChange({ line: lineIndex, index })}
+              onClick={(extend) => onCaretChange({ line: lineIndex, index }, extend)}
             />
           )).flatMap((slot, index) => {
             const token = line[index];
@@ -77,7 +97,9 @@ export function NotationView({
                   key={index}
                   data-bar=""
                   aria-label="bar line"
-                  className="mx-0.5 h-7 w-px shrink-0 bg-graphite/40"
+                  className={`mx-0.5 h-7 w-px shrink-0 ${
+                    selected(lineIndex, index) ? 'bg-signal' : 'bg-graphite/40'
+                  }`}
                 />,
               ];
             }
@@ -89,13 +111,22 @@ export function NotationView({
                 type="button"
                 // Clicking a cell puts the caret before it, so a wrong note can
                 // be deleted with one backspace.
-                onClick={() => onCaretChange({ line: lineIndex, index })}
+                onClick={(event) =>
+                  onCaretChange({ line: lineIndex, index }, event.shiftKey)
+                }
+                data-selected={selected(lineIndex, index) ? 'true' : undefined}
                 className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-[14px] transition-colors duration-100 ${
-                  playing ? 'bg-signal/15 text-signal' : 'text-graphite hover:bg-black/5'
+                  playing
+                    ? 'bg-signal/15 text-signal'
+                    : selected(lineIndex, index)
+                      ? 'bg-graphite/15 text-graphite'
+                      : 'text-graphite hover:bg-black/5'
                 }`}
               >
                 {token.kind === 'sustain' ? (
                   <span aria-hidden="true">&mdash;</span>
+                ) : notation === 'western' ? (
+                  <WesternName midi={midiFor(token, tonic)} />
                 ) : (
                   <Swara
                     swara={{ ...swaraOfDegree(token.degree), saptak: token.saptak }}
@@ -107,13 +138,27 @@ export function NotationView({
                   hangs below the cell and is curved, so it cannot be mistaken
                   for the straight underline that marks a komal swara.
                 */}
-                {token.kind === 'note' && token.grouped && (
-                  <span
-                    data-tie=""
-                    aria-hidden="true"
-                    className="absolute -bottom-1.5 -left-2.5 h-2 w-[calc(100%+0.625rem)] rounded-b-[999px] border-b-2 border-l-2 border-r-2 border-signal/50"
-                  />
-                )}
+                {token.kind === 'note' &&
+                  token.grouped &&
+                  (index === 0 ? (
+                    /*
+                      Tied to the beat that ended the line above. There is
+                      nothing on this line to arc back to, so it gets a stub
+                      running off the left edge instead of a curve into space.
+                    */
+                    <span
+                      data-tie=""
+                      data-tie-continued=""
+                      aria-hidden="true"
+                      className="absolute -bottom-1.5 left-0 h-2 w-1/2 rounded-bl-[999px] border-b-2 border-l-2 border-signal/50"
+                    />
+                  ) : (
+                    <span
+                      data-tie=""
+                      aria-hidden="true"
+                      className="absolute -bottom-1.5 -left-2.5 h-2 w-[calc(100%+0.625rem)] rounded-b-[999px] border-b-2 border-l-2 border-r-2 border-signal/50"
+                    />
+                  ))}
               </button>,
             ];
           })}
@@ -123,13 +168,33 @@ export function NotationView({
   );
 }
 
+/** A written note under Western naming: pitch class with its octave. */
+function WesternName({ midi }: { midi: number }) {
+  const note = noteAt(midi);
+
+  return (
+    <span className="leading-none tracking-tight">
+      {note.name}
+      <sup className="ml-px text-[9px] font-medium tabular-nums opacity-70">
+        {note.octave}
+      </sup>
+    </span>
+  );
+}
+
 /** The gap between two cells, and the caret when it is here. */
-function CaretSlot({ active, onClick }: { active: boolean; onClick: () => void }) {
+function CaretSlot({
+  active,
+  onClick,
+}: {
+  active: boolean;
+  onClick: (extend: boolean) => void;
+}) {
   return (
     <button
       type="button"
       aria-label="place caret"
-      onClick={onClick}
+      onClick={(event) => onClick(event.shiftKey)}
       className="group relative h-8 w-2 shrink-0"
     >
       <span

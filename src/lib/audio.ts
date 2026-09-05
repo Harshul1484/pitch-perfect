@@ -22,21 +22,124 @@ export function getAudioContext(): AudioContext | null {
 
 export const DEFAULT_DURATION = 1.4;
 
+/** Which instrument the app sounds notes with. */
+export type Voice = 'violin' | 'piano';
+
+export const VOICES: Voice[] = ['violin', 'piano'];
+
 export interface PlayOptions {
   durationSeconds?: number;
   /** 0 to 1, scaling the peak gain. */
   volume?: number;
+  voice?: Voice;
 }
 
-const PEAK_GAIN = 0.28;
-const ATTACK_SECONDS = 0.015;
 /** exponentialRampToValueAtTime cannot reach zero, so decay to near-silence. */
 const SILENCE = 0.0001;
 
+const PIANO_PEAK = 0.28;
+const PIANO_ATTACK = 0.015;
+
+const VIOLIN_PEAK = 0.2;
+/** The bow takes hold rather than starting instantly. */
+const VIOLIN_ATTACK = 0.09;
+const VIOLIN_RELEASE = 0.14;
+/** Vibrato: rate in Hz and depth in cents, and how long before it comes in. */
+const VIBRATO_HZ = 5.5;
+const VIBRATO_CENTS = 11;
+const VIBRATO_DELAY = 0.18;
+/** Rolls off the buzz of a raw sawtooth into something closer to a string. */
+const BODY_HZ = 2600;
+
 /**
- * Play a single tone. Returns false when Web Audio is unavailable, which is
- * the case in jsdom and in browsers that block audio entirely.
+ * A bowed string.
+ *
+ * A sawtooth is the classic starting point, because bowing is a stick-slip
+ * motion and produces a sawtooth-like waveform. On its own it buzzes, so it
+ * goes through a lowpass to give it a body, gets a slow attack rather than a
+ * struck one, and carries a little delayed vibrato — which is what most
+ * separates a bowed note from a synthesised one.
  */
+function bowed(
+  ctx: AudioContext,
+  frequency: number,
+  startedAt: number,
+  durationSeconds: number,
+  volume: number,
+): void {
+  const oscillator = ctx.createOscillator();
+  const body = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+
+  oscillator.type = 'sawtooth';
+  oscillator.frequency.setValueAtTime(frequency, startedAt);
+
+  body.type = 'lowpass';
+  // Track the note: high notes need the filter open further or they go dull.
+  body.frequency.setValueAtTime(Math.max(BODY_HZ, frequency * 4), startedAt);
+  body.Q.setValueAtTime(0.7, startedAt);
+
+  const attack = Math.min(VIOLIN_ATTACK, durationSeconds * 0.4);
+  const release = Math.min(VIOLIN_RELEASE, durationSeconds * 0.4);
+  const peak = VIOLIN_PEAK * volume;
+
+  gain.gain.setValueAtTime(SILENCE, startedAt);
+  gain.gain.exponentialRampToValueAtTime(peak, startedAt + attack);
+  // Hold roughly level while the bow travels, then ease off.
+  gain.gain.setValueAtTime(peak, startedAt + durationSeconds - release);
+  gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
+
+  oscillator.connect(body);
+  body.connect(gain);
+  gain.connect(ctx.destination);
+
+  // Vibrato, easing in so short notes stay straight.
+  const lfo = ctx.createOscillator();
+  const depth = ctx.createGain();
+  lfo.frequency.setValueAtTime(VIBRATO_HZ, startedAt);
+  depth.gain.setValueAtTime(0, startedAt);
+  depth.gain.linearRampToValueAtTime(
+    VIBRATO_CENTS,
+    startedAt + Math.min(VIBRATO_DELAY + 0.2, durationSeconds),
+  );
+  lfo.connect(depth);
+  depth.connect(oscillator.detune);
+
+  lfo.start(startedAt);
+  lfo.stop(startedAt + durationSeconds);
+  oscillator.start(startedAt);
+  oscillator.stop(startedAt + durationSeconds);
+}
+
+/**
+ * A struck string: an immediate attack and a decay that runs the whole length,
+ * with no sustain. Triangle rather than sine, which gets shrill in the top
+ * octaves of an 88-key range.
+ */
+function struck(
+  ctx: AudioContext,
+  frequency: number,
+  startedAt: number,
+  durationSeconds: number,
+  volume: number,
+): void {
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(frequency, startedAt);
+
+  gain.gain.setValueAtTime(SILENCE, startedAt);
+  gain.gain.exponentialRampToValueAtTime(PIANO_PEAK * volume, startedAt + PIANO_ATTACK);
+  gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
+
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+
+  oscillator.start(startedAt);
+  oscillator.stop(startedAt + durationSeconds);
+}
+
 /**
  * Sound a tone at a given AudioContext time. Notation playback schedules a
  * whole phrase ahead of time, so it needs to say when each note starts rather
@@ -47,38 +150,27 @@ export function scheduleTone(
   startedAt: number,
   durationSeconds: number,
   volume: number,
+  voice: Voice = 'violin',
 ): boolean {
   const ctx = getAudioContext();
   if (!ctx || volume <= 0) return false;
-  const oscillator = ctx.createOscillator();
-  const gain = ctx.createGain();
 
-  // Triangle reads as a warmer, less piercing tone than a sine across the
-  // full 88-key range, where the top octaves get shrill fast.
-  oscillator.type = 'triangle';
-  oscillator.frequency.setValueAtTime(frequency, startedAt);
-
-  // A hard start and stop produces an audible click; ramping avoids it.
-  gain.gain.setValueAtTime(SILENCE, startedAt);
-  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN * volume, startedAt + ATTACK_SECONDS);
-  gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
-
-  oscillator.connect(gain);
-  gain.connect(ctx.destination);
-
-  oscillator.start(startedAt);
-  oscillator.stop(startedAt + durationSeconds);
+  if (voice === 'piano') {
+    struck(ctx, frequency, startedAt, durationSeconds, volume);
+  } else {
+    bowed(ctx, frequency, startedAt, durationSeconds, volume);
+  }
 
   return true;
 }
 
 /** Sound a tone immediately. */
 export function playFrequency(frequency: number, options: PlayOptions = {}): boolean {
-  const { durationSeconds = DEFAULT_DURATION, volume = 1 } = options;
+  const { durationSeconds = DEFAULT_DURATION, volume = 1, voice = 'violin' } = options;
 
   const ctx = getAudioContext();
   if (!ctx) return false;
   if (ctx.state === 'suspended') void ctx.resume();
 
-  return scheduleTone(frequency, ctx.currentTime, durationSeconds, volume);
+  return scheduleTone(frequency, ctx.currentTime, durationSeconds, volume, voice);
 }

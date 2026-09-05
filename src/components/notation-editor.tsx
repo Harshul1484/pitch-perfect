@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   letterToDegree,
   parseNotation,
@@ -19,8 +19,30 @@ import {
   moveRight,
   moveUp,
   type Caret,
+  type Edit,
 } from '../lib/caret';
-import { TONICS } from '../lib/notation';
+import {
+  canRedo,
+  canUndo,
+  initial,
+  record,
+  redo,
+  undo,
+  type History,
+} from '../lib/history';
+import {
+  deleteRange,
+  extract,
+  insertLines,
+  isEmpty,
+  ordered,
+  selectAll,
+  type Selection,
+} from '../lib/selection';
+import { NOTATIONS, TONICS, type Notation } from '../lib/notation';
+import { VOICES, type Voice } from '../lib/audio';
+import { usePreference } from '../hooks/use-preference';
+import { Segmented } from './segmented';
 import type { Composition } from '../hooks/use-compositions';
 import { useNotationPlayback } from '../hooks/use-notation-playback';
 import { NotationView } from './notation-view';
@@ -31,6 +53,12 @@ const KEY =
 
 /** Saved this long after you stop typing. */
 const SAVE_DEBOUNCE_MS = 800;
+
+/** What undo steps through: the document and where the caret was in it. */
+interface DocState {
+  lines: Line[];
+  caret: Caret;
+}
 
 interface NotationEditorProps {
   composition: Composition;
@@ -45,18 +73,35 @@ interface NotationEditorProps {
  * and the notation state initialises straight from props. That avoids an
  * effect copying props into state, which would also race the live Firestore
  * snapshot and could overwrite what is being typed.
+ *
+ * Undo steps through whole documents, caret included, so undoing a deletion
+ * puts the caret back where the deletion happened rather than wherever it
+ * drifted to. Selection is deliberately outside the history: nobody wants to
+ * spend undos walking back through highlights.
  */
 export function NotationEditor({ composition, onSave, onDelete }: NotationEditorProps) {
-  const [lines, setLines] = useState<Line[]>(() => parseNotation(composition.notation));
-  const [caret, setCaret] = useState<Caret>(() =>
-    caretAtEnd(parseNotation(composition.notation)),
-  );
+  const [history, setHistory] = useState<History<DocState>>(() => {
+    const lines = parseNotation(composition.notation);
+    return initial({ lines, caret: caretAtEnd(lines) });
+  });
+  const { lines, caret } = history.present;
+
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [saptak, setSaptak] = useState(0);
   const [tie, setTie] = useState(false);
   const [bpm, setBpm] = useState(80);
+  const [notation, setNotation] = usePreference<Notation>(
+    'pitch.notation',
+    'western',
+    NOTATIONS,
+  );
+  const [voice, setVoice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
   const [dirty, setDirty] = useState(false);
 
-  const playback = useNotationPlayback(lines, composition.tonic, bpm, 0.7);
+  /** Cut and copy keep their own clipboard, so notation survives round trips. */
+  const clipboard = useRef<Line[]>([]);
+
+  const playback = useNotationPlayback(lines, composition.tonic, bpm, 0.7, voice);
 
   const { id } = composition;
 
@@ -71,22 +116,32 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
     return () => window.clearTimeout(timer);
   }, [lines, dirty, id, onSave]);
 
-  /** Apply an edit that moves the caret with it. */
-  const apply = useCallback(
-    (edit: (lines: Line[], caret: Caret) => { lines: Line[]; caret: Caret }) => {
-      setLines((currentLines) => {
-        const result = edit(currentLines, caret);
-        setCaret(result.caret);
-        return result.lines;
-      });
-      setDirty(true);
-    },
-    [caret],
+  /** Apply an edit, recording it so it can be undone. */
+  const apply = useCallback((edit: (state: DocState) => Edit) => {
+    setHistory((current) => {
+      const result = edit(current.present);
+      return record(current, { lines: result.lines, caret: result.caret });
+    });
+    setSelection(null);
+    setDirty(true);
+  }, []);
+
+  /** Anything typed over a selection replaces it, as in any editor. */
+  const replacingSelection = useCallback(
+    (then: (state: DocState) => Edit) =>
+      (state: DocState): Edit => {
+        if (selection === null || isEmpty(selection)) return then(state);
+
+        const cleared = deleteRange(state.lines, selection);
+        return then({ lines: cleared.lines, caret: cleared.caret });
+      },
+    [selection],
   );
 
   const insert = useCallback(
-    (token: Token) => apply((l, c) => insertToken(l, c, token)),
-    [apply],
+    (token: Token) =>
+      apply(replacingSelection((state) => insertToken(state.lines, state.caret, token))),
+    [apply, replacingSelection],
   );
 
   const addNote = useCallback(
@@ -103,13 +158,95 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
     [insert, saptak, tie],
   );
 
+  const moveCaret = useCallback((to: (l: Line[], c: Caret) => Caret, extend: boolean) => {
+    setHistory((current) => {
+      const next = to(current.present.lines, current.present.caret);
+
+      setSelection((existing) =>
+        extend
+          ? { anchor: existing?.anchor ?? current.present.caret, focus: next }
+          : null,
+      );
+
+      return { ...current, present: { ...current.present, caret: next } };
+    });
+  }, []);
+
+  const copySelection = useCallback(() => {
+    if (selection === null || isEmpty(selection)) return;
+
+    const clip = extract(lines, selection);
+    clipboard.current = clip;
+    // Best effort, so notation can be pasted into a message or a file too.
+    void navigator.clipboard?.writeText(serializeLines(clip)).catch(() => undefined);
+  }, [lines, selection]);
+
+  const cutSelection = useCallback(() => {
+    if (selection === null || isEmpty(selection)) return;
+
+    copySelection();
+    apply((state) => deleteRange(state.lines, selection));
+  }, [apply, copySelection, selection]);
+
+  const paste = useCallback(() => {
+    if (clipboard.current.length === 0) return;
+
+    apply(
+      replacingSelection((state) =>
+        insertLines(state.lines, state.caret, clipboard.current),
+      ),
+    );
+  }, [apply, replacingSelection]);
+
   // Typing shortcuts, so the on-screen keyboard teaches the letters and then
   // gets out of the way.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const command = event.metaKey || event.ctrlKey;
+
+      if (command) {
+        const key = event.key.toLowerCase();
+
+        if (key === 'z') {
+          event.preventDefault();
+          setHistory((current) => (event.shiftKey ? redo(current) : undo(current)));
+          setSelection(null);
+          setDirty(true);
+          return;
+        }
+        if (key === 'y') {
+          event.preventDefault();
+          setHistory(redo);
+          setDirty(true);
+          return;
+        }
+        if (key === 'a') {
+          event.preventDefault();
+          setSelection(selectAll(lines));
+          return;
+        }
+        if (key === 'c') {
+          event.preventDefault();
+          copySelection();
+          return;
+        }
+        if (key === 'x') {
+          event.preventDefault();
+          cutSelection();
+          return;
+        }
+        if (key === 'v') {
+          event.preventDefault();
+          paste();
+          return;
+        }
+        return;
+      }
+
+      if (event.altKey) return;
 
       const moves: Record<string, (l: Line[], c: Caret) => Caret> = {
         ArrowLeft: moveLeft,
@@ -123,23 +260,28 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
       const move = moves[event.key];
       if (move) {
         event.preventDefault();
-        setCaret((current) => move(lines, current));
+        moveCaret(move, event.shiftKey);
         return;
       }
 
-      if (event.key === 'Backspace') {
+      const hasSelection = selection !== null && !isEmpty(selection);
+
+      if (event.key === 'Backspace' || event.key === 'Delete') {
         event.preventDefault();
-        apply(deleteBefore);
-        return;
-      }
-      if (event.key === 'Delete') {
-        event.preventDefault();
-        apply(deleteAt);
+        if (hasSelection) {
+          apply((state) => deleteRange(state.lines, selection));
+        } else {
+          apply((state) =>
+            event.key === 'Backspace'
+              ? deleteBefore(state.lines, state.caret)
+              : deleteAt(state.lines, state.caret),
+          );
+        }
         return;
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        apply(breakLine);
+        apply(replacingSelection((state) => breakLine(state.lines, state.caret)));
         return;
       }
       if (event.key === '-') {
@@ -167,7 +309,20 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [addNote, apply, insert, lines]);
+  }, [
+    addNote,
+    apply,
+    copySelection,
+    cutSelection,
+    insert,
+    lines,
+    moveCaret,
+    paste,
+    replacingSelection,
+    selection,
+  ]);
+
+  const selectedRange = selection && !isEmpty(selection) ? ordered(selection) : null;
 
   return (
     <div className="keycap flex min-h-0 flex-1 flex-col gap-3 bg-tile p-3">
@@ -205,7 +360,18 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
         lines={lines}
         playingIndex={playback.token}
         caret={caret}
-        onCaretChange={setCaret}
+        selection={selectedRange}
+        notation={notation}
+        tonic={composition.tonic}
+        onCaretChange={(next, extend) => {
+          setHistory((current) => ({
+            ...current,
+            present: { ...current.present, caret: next },
+          }));
+          setSelection((existing) =>
+            extend ? { anchor: existing?.anchor ?? caret, focus: next } : null,
+          );
+        }}
       />
 
       <div className="flex items-center gap-2 border-t border-hairline-soft pt-2">
@@ -222,6 +388,30 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
           {playback.isPlaying ? 'stop' : 'play'}
         </button>
 
+        <button
+          type="button"
+          onClick={() => {
+            setHistory(undo);
+            setDirty(true);
+          }}
+          disabled={!canUndo(history)}
+          className={`${KEY} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
+        >
+          undo
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setHistory(redo);
+            setDirty(true);
+          }}
+          disabled={!canRedo(history)}
+          className={`${KEY} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
+        >
+          redo
+        </button>
+
         <label className="flex items-center gap-1.5">
           <span className="mono-label">tempo</span>
           <input
@@ -235,19 +425,38 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
           />
         </label>
 
-        <span className="mono-label ml-auto">{dirty ? 'saving' : 'saved'}</span>
+        <span className="ml-auto flex items-center gap-3">
+          <Segmented
+            label="notation"
+            value={notation}
+            options={NOTATIONS}
+            onChange={setNotation}
+          />
+          <Segmented label="voice" value={voice} options={VOICES} onChange={setVoice} />
+          <span className="mono-label">{dirty ? 'saving' : 'saved'}</span>
+        </span>
       </div>
 
       <SwaraKeyboard
         saptak={saptak}
         onSaptakChange={setSaptak}
+        notation={notation}
+        tonic={composition.tonic}
         tie={tie}
         onTieToggle={() => setTie((value) => !value)}
         onNote={addNote}
         onSustain={() => insert({ kind: 'sustain' })}
         onBar={() => insert({ kind: 'bar' })}
-        onNewLine={() => apply(breakLine)}
-        onBackspace={() => apply(deleteBefore)}
+        onNewLine={() =>
+          apply(replacingSelection((state) => breakLine(state.lines, state.caret)))
+        }
+        onBackspace={() =>
+          apply((state) =>
+            selection && !isEmpty(selection)
+              ? deleteRange(state.lines, selection)
+              : deleteBefore(state.lines, state.caret),
+          )
+        }
       />
     </div>
   );
