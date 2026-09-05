@@ -40,8 +40,6 @@ const NOTHING: Record<number, Mark> = {};
 export interface Practice {
   /** The latest attempt at each pitch, by midi number. */
   marks: Record<number, Mark>;
-  /** The attempt that has just counted. Null on every other render. */
-  committed: Mark | null;
   reset: () => void;
 }
 
@@ -60,10 +58,23 @@ export function usePractice(
   tolerance: number,
   holdMs: number | null,
   enabled: boolean,
+  /**
+   * Called once for each attempt, as it starts to count. A callback rather
+   * than a returned value: an attempt is an event, and a caller folding events
+   * into state would have to do it from an effect, which is the shape that
+   * causes cascading renders.
+   */
+  onAttempt?: (mark: Mark) => void,
 ): Practice {
   const state = useRef<PracticeState>(EMPTY);
   const [marks, setMarks] = useState<Record<number, Mark>>({});
-  const [committed, setCommitted] = useState<Mark | null>(null);
+
+  // Held in a ref so a caller can pass an inline function without restarting
+  // the reading effect sixty times a second.
+  const report = useRef(onAttempt);
+  useEffect(() => {
+    report.current = onAttempt;
+  }, [onAttempt]);
 
   // Take each reading as it arrives. This is accumulation over a stream, not
   // state derived from props: what the bed shows depends on every reading so
@@ -79,7 +90,7 @@ export function usePractice(
 
     state.current = step.state;
     setMarks(step.state.marks);
-    setCommitted(step.committed);
+    if (step.committed) report.current?.(step.committed);
   }, [match, enabled, tolerance]);
 
   // Switching off wipes the slate, so turning it back on starts a session
@@ -113,10 +124,9 @@ export function usePractice(
   const reset = useCallback(() => {
     state.current = EMPTY;
     setMarks({});
-    setCommitted(null);
   }, []);
 
   // Switched off shows nothing, derived rather than cleared: there is no state
   // to reconcile, and no render where the bed still carries the last session.
-  return enabled ? { marks, committed, reset } : { marks: NOTHING, committed: null, reset };
+  return enabled ? { marks, reset } : { marks: NOTHING, reset };
 }

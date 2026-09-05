@@ -1,5 +1,4 @@
 import { act, renderHook } from '@testing-library/react';
-import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePractice } from './use-practice';
 import { noteAt, type PitchMatch } from '../lib/notes';
@@ -143,26 +142,20 @@ describe('usePractice', () => {
     expect(result.current.marks).toEqual({});
   });
 
-  it('reports each attempt once, however many times it re-renders', () => {
+  it('reports each attempt once, as it happens', () => {
     const seen: number[] = [];
+    const onAttempt = (mark: { midi: number }) => seen.push(mark.midi);
 
-    // Read the way a caller reads it: from an effect keyed on the value, so a
-    // re-render carrying the same attempt does not count it twice.
     const { rerender } = renderHook(
-      ({ heard }) => {
-        const practice = usePractice(heard, 10, null, true);
-        useEffect(() => {
-          if (practice.committed) seen.push(practice.committed.midi);
-        }, [practice.committed]);
-        return practice;
-      },
+      ({ heard }) => usePractice(heard, 10, null, true, onAttempt),
       { initialProps: { heard: null as PitchMatch | null } },
     );
 
+    // Twenty readings of one pitch is one attempt, however many renders.
     play(rerender, 69, 2, 20);
     expect(seen).toEqual([69]);
 
-    // A different note is a second attempt, and is reported.
+    // A different note is a second attempt.
     play(rerender, 71, 2, 20);
     expect(seen).toEqual([69, 71]);
   });

@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/use-auth';
 import { useCompositions } from '../hooks/use-compositions';
 import { AccountControl } from '../components/account-control';
 import { NotationEditor } from '../components/notation-editor';
+import { usePitchDetection } from '../hooks/use-pitch-detection';
+import { nearestNote } from '../lib/notes';
 
 /*
  * Hover styling belongs to the off state, never alongside the on state.
@@ -18,6 +20,14 @@ const KEY_ON = `${KEY} border-graphite bg-graphite bg-none text-panel`;
 export function Notes() {
   const auth = useAuth();
   const store = useCompositions(auth.user?.uid ?? null);
+
+  // This page listens too, so a piece can be practised where it lives.
+  const { status, reading, start, stop } = usePitchDetection();
+  const listening = status === 'listening';
+  const match = useMemo(
+    () => (reading ? nearestNote(reading.frequency) : null),
+    [reading],
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -59,7 +69,7 @@ export function Notes() {
   }
 
   return (
-    <Shell auth={auth}>
+    <Shell auth={auth} listening={listening} onListen={listening ? stop : start}>
       <div className="flex min-h-0 flex-1 gap-2.5 short:gap-1.5">
         <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 short:w-[132px] short:gap-1.5 short:p-2">
           <div className="flex items-center justify-between">
@@ -107,6 +117,8 @@ export function Notes() {
           <NotationEditor
             key={selected.id}
             composition={selected}
+            match={match}
+            listening={listening}
             onSave={store.save}
             onDelete={async (id) => {
               await store.remove(id);
@@ -126,9 +138,13 @@ export function Notes() {
 function Shell({
   children,
   auth,
+  listening,
+  onListen,
 }: {
   children: ReactNode;
   auth?: ReturnType<typeof useAuth>;
+  listening?: boolean;
+  onListen?: () => void;
 }) {
   return (
     <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
@@ -146,7 +162,27 @@ function Shell({
             &larr; tuner
           </Link>
         </div>
-        {auth && <AccountControl {...auth} />}
+        <div className="flex items-center gap-2 short:gap-1.5">
+          {onListen && (
+            <button
+              type="button"
+              onClick={onListen}
+              aria-pressed={listening}
+              className={`${
+                listening ? KEY_ON : KEY_OFF
+              } flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] short:px-2 short:py-1 short:text-[9px]`}
+            >
+              <span
+                aria-hidden="true"
+                className={`h-1.5 w-1.5 rounded-[1px] ${
+                  listening ? 'bg-signal' : 'bg-hairline'
+                }`}
+              />
+              {listening ? 'stop' : 'listen'}
+            </button>
+          )}
+          {auth && <AccountControl {...auth} />}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   letterToDegree,
   parseNotation,
@@ -50,6 +50,13 @@ import type { Composition } from '../hooks/use-compositions';
 import { useNotationPlayback } from '../hooks/use-notation-playback';
 import { NotationView } from './notation-view';
 import { SwaraKeyboard } from './swara-keyboard';
+import { Keybed } from './keybed';
+import { PracticeControl } from './practice-control';
+import { advance, targetsOf, verdicts as hitsSoFar } from '../lib/follow';
+import { useHoldPreference, usePractice } from '../hooks/use-practice';
+import { useRun } from '../hooks/use-run';
+import { useNumberPreference } from '../hooks/use-preference';
+import { IN_TUNE_CENTS, type PitchMatch } from '../lib/notes';
 
 /* Hover lives on the off state only — see the note in routes/notes.tsx. */
 const KEY = 'keycap keycap-pressable active:keycap-pressed';
@@ -70,6 +77,9 @@ interface DocState {
 
 interface NotationEditorProps {
   composition: Composition;
+  /** What the microphone is hearing, when this page is listening. */
+  match?: PitchMatch | null;
+  listening?: boolean;
   onSave: (
     id: string,
     changes: { title?: string; notation?: string; tonic?: number },
@@ -90,7 +100,13 @@ interface NotationEditorProps {
  * drifted to. Selection is deliberately outside the history: nobody wants to
  * spend undos walking back through highlights.
  */
-export function NotationEditor({ composition, onSave, onDelete }: NotationEditorProps) {
+export function NotationEditor({
+  composition,
+  match = null,
+  listening = false,
+  onSave,
+  onDelete,
+}: NotationEditorProps) {
   const [history, setHistory] = useState<History<DocState>>(() => {
     const lines = parseNotation(composition.notation);
     const fresh = initial({ lines, caret: caretAtEnd(lines) });
@@ -123,6 +139,40 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
   const clipboard = useRef<Line[]>([]);
 
   const playback = useNotationPlayback(lines, composition.tonic, bpm, 0.7, voice);
+
+  /*
+   * Practice. Two stages: learn waits for each note, run plays the piece in
+   * time and scores it. The tolerance is the player's, shared with the tuner.
+   */
+  const [practising, setPractising] = useState(false);
+  const [stage, setStage] = useState<'learn' | 'run'>('learn');
+  const [reached, setReached] = useState(0);
+  const [tolerance] = useNumberPreference('pitch.tolerance', IN_TUNE_CENTS, 2, 30);
+  const [holdMs, setHoldMs] = useHoldPreference();
+
+  const targets = useMemo(
+    () => targetsOf(lines, composition.tonic),
+    [lines, composition.tonic],
+  );
+
+  // Each attempt moves the target on, if it was the right note in tune. This
+  // is a fold over events, so it happens as they arrive rather than in an
+  // effect watching for them to have arrived.
+  const practice = usePractice(
+    match,
+    tolerance,
+    holdMs,
+    practising,
+    useCallback(
+      (mark) => {
+        if (stage !== 'learn') return;
+        setReached((current) => advance(current, targets, mark));
+      },
+      [stage, targets],
+    ),
+  );
+
+  const run = useRun(lines, composition.tonic, bpm, tolerance, match);
 
   const { id } = composition;
 
@@ -402,6 +452,18 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
 
       <NotationView
         lines={lines}
+        verdicts={
+          practising
+            ? stage === 'run' && run.result
+              ? Object.fromEntries(
+                  run.result.notes.map((note) => [note.tokenIndex, note.verdict]),
+                )
+              : hitsSoFar(targets, reached)
+            : undefined
+        }
+        targetIndex={
+          practising && stage === 'learn' ? (targets[reached]?.tokenIndex ?? null) : null
+        }
         playingIndex={playback.token}
         caret={caret}
         selection={selectedRange}
@@ -467,6 +529,74 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
           />
         </label>
 
+        <PracticeControl
+          on={practising}
+          onToggle={() => {
+            setPractising((on) => !on);
+            setReached(0);
+            run.stop();
+            run.clear();
+          }}
+          holdMs={holdMs}
+          onHoldChange={setHoldMs}
+          onReset={() => {
+            practice.reset();
+            setReached(0);
+            run.clear();
+          }}
+          marked={Object.keys(practice.marks).length}
+        >
+          {practising && (
+            <div className="flex flex-col gap-2 border-t border-hairline-soft pt-2">
+              <div role="group" aria-label="practice stage" className="flex gap-1">
+                {(['learn', 'run'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setStage(option);
+                      run.stop();
+                    }}
+                    aria-pressed={stage === option}
+                    className={`${
+                      stage === option ? KEY_ON : `${KEY_OFF} text-engrave`
+                    } flex-1 px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+
+              {stage === 'learn' ? (
+                <span className="mono-label normal-case">
+                  {reached} of {targets.length} — it waits for each note.
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={run.running ? run.stop : run.start}
+                    disabled={!listening || targets.length === 0}
+                    className={`${
+                      run.running ? KEY_ON : KEY_OFF
+                    } px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em] disabled:cursor-default disabled:opacity-40`}
+                  >
+                    {run.running ? 'stop' : 'start the run'}
+                  </button>
+
+                  <span className="mono-label normal-case">
+                    {run.result
+                      ? `${run.result.hits} of ${run.result.total} in tune, in time.`
+                      : listening
+                        ? 'A bar of count-in, then play along.'
+                        : 'Press listen first.'}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </PracticeControl>
+
         <span className="ml-auto flex flex-wrap items-center justify-end gap-3 short:gap-1.5">
           <Segmented
             label="notation"
@@ -479,27 +609,80 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
         </span>
       </div>
 
-      <SwaraKeyboard
-        saptak={saptak}
-        onSaptakChange={setSaptak}
-        notation={notation}
-        tonic={composition.tonic}
-        tie={tie}
-        onTieToggle={() => setTie((value) => !value)}
-        onNote={addNote}
-        onSustain={() => insert({ kind: 'sustain' })}
-        onBar={() => insert({ kind: 'bar' })}
-        onNewLine={() =>
-          apply(replacingSelection((state) => breakLine(state.lines, state.caret)))
-        }
-        onBackspace={() =>
-          apply((state) =>
-            selection && !isEmpty(selection)
-              ? deleteRange(state.lines, selection)
-              : deleteBefore(state.lines, state.caret),
-          )
-        }
-      />
+      {/*
+       * While practising, the bed takes the keyboard's place: you are playing
+       * the violin, not typing, and the two are the same twelve columns wide.
+       * It shows only the octaves in play — a full nine-row plate would not fit
+       * beside a written page, and most of it would be empty anyway.
+       */}
+      {practising ? (
+        <div className="flex h-[132px] shrink-0 flex-col gap-1 short:h-[92px]">
+          <span className="mono-label">
+            {stage === 'run'
+              ? run.countingIn
+                ? 'counting in'
+                : run.running
+                  ? 'playing'
+                  : 'press run when you are ready'
+              : reached >= targets.length && targets.length > 0
+                ? 'that is the whole piece'
+                : 'play the outlined note'}
+          </span>
+
+          <Keybed
+            notation={notation}
+            tonic={composition.tonic}
+            onPlay={() => {}}
+            activeMidi={null}
+            detectedMidi={match?.note.midi ?? null}
+            detectedCents={match?.cents ?? null}
+            tolerance={tolerance}
+            marks={practice.marks}
+            targetMidi={
+              stage === 'learn' ? (targets[reached]?.midi ?? null) : null
+            }
+            octaves={octavesOf(targets, match?.note.midi ?? null)}
+          />
+        </div>
+      ) : (
+        <SwaraKeyboard
+          saptak={saptak}
+          onSaptakChange={setSaptak}
+          notation={notation}
+          tonic={composition.tonic}
+          tie={tie}
+          onTieToggle={() => setTie((value) => !value)}
+          onNote={addNote}
+          onSustain={() => insert({ kind: 'sustain' })}
+          onBar={() => insert({ kind: 'bar' })}
+          onNewLine={() =>
+            apply(replacingSelection((state) => breakLine(state.lines, state.caret)))
+          }
+          onBackspace={() =>
+            apply((state) =>
+              selection && !isEmpty(selection)
+                ? deleteRange(state.lines, selection)
+                : deleteBefore(state.lines, state.caret),
+            )
+          }
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * The octaves worth showing: those the piece uses, widened to include whatever
+ * is being played now so a stray note is still visible rather than silently
+ * off the plate.
+ */
+function octavesOf(
+  targets: { midi: number }[],
+  heard: number | null,
+): { from: number; to: number } {
+  const midis = [...targets.map((target) => target.midi), ...(heard === null ? [] : [heard])];
+  if (midis.length === 0) return { from: 3, to: 5 };
+
+  const octave = (midi: number) => Math.floor(midi / 12) - 1;
+  return { from: octave(Math.min(...midis)), to: octave(Math.max(...midis)) };
 }
