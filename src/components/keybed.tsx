@@ -1,10 +1,10 @@
 import type { Notation } from '../lib/notation';
 import { ALL_NOTES, HIGHEST_MIDI, LOWEST_MIDI, type Note } from '../lib/notes';
+import type { Mark } from '../lib/practice';
 import { NoteTile } from './note-tile';
 
 const FIRST_OCTAVE = Math.floor(LOWEST_MIDI / 12) - 1;
 const LAST_OCTAVE = Math.floor(HIGHEST_MIDI / 12) - 1;
-const ROWS = LAST_OCTAVE - FIRST_OCTAVE + 1;
 const COLUMNS = 12;
 
 /** Chromatic column for a note: C is 1, B is 12. */
@@ -12,14 +12,8 @@ function columnOf(midi: number): number {
   return (midi % 12) + 1;
 }
 
-/** Every cell position, so the plate stays a clean rectangle. */
-const CELLS = Array.from({ length: ROWS * COLUMNS }, (_, index) => index);
-
 const byPosition = new Map(
-  ALL_NOTES.map((note) => [
-    (note.octave - FIRST_OCTAVE) * COLUMNS + (columnOf(note.midi) - 1),
-    note,
-  ]),
+  ALL_NOTES.map((note) => [note.octave * COLUMNS + (columnOf(note.midi) - 1), note]),
 );
 
 interface KeybedProps {
@@ -30,6 +24,15 @@ interface KeybedProps {
   detectedMidi: number | null;
   detectedCents: number | null;
   tolerance: number;
+  /** What was played earlier in this session, by midi number. */
+  marks?: Record<number, Mark>;
+  /** The note a piece is waiting for, or null. */
+  targetMidi?: number | null;
+  /**
+   * Show only these octaves, inclusive. The notes page practises one or two
+   * octaves at a time and has no room for the other seven.
+   */
+  octaves?: { from: number; to: number };
 }
 
 /**
@@ -52,11 +55,24 @@ export function Keybed({
   detectedMidi,
   detectedCents,
   tolerance,
+  marks,
+  targetMidi = null,
+  octaves,
 }: KeybedProps) {
+  const from = octaves?.from ?? FIRST_OCTAVE;
+  const to = octaves?.to ?? LAST_OCTAVE;
+  const rows = to - from + 1;
+
+  const cells = Array.from({ length: rows * COLUMNS }, (_, index) => index);
+
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-12 grid-rows-9 gap-px overflow-hidden rounded-lg border border-hairline bg-hairline">
-      {CELLS.map((position) => {
-        const note = byPosition.get(position);
+    <div
+      className="grid min-h-0 flex-1 grid-cols-12 gap-px overflow-hidden rounded-lg border border-hairline bg-hairline"
+      style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+    >
+      {cells.map((position) => {
+        const octave = from + Math.floor(position / COLUMNS);
+        const note = byPosition.get(octave * COLUMNS + (position % COLUMNS));
 
         if (!note) {
           return <span key={position} aria-hidden="true" className="bg-panel" />;
@@ -72,6 +88,8 @@ export function Keybed({
             tolerance={tolerance}
             notation={notation}
             tonic={tonic}
+            mark={marks?.[note.midi] ?? null}
+            isTarget={note.midi === targetMidi}
           />
         );
       })}

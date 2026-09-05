@@ -1,4 +1,5 @@
 import { spokenLabel, swaraFor, type Notation } from '../lib/notation';
+import type { Mark } from '../lib/practice';
 import { Swara } from './swara';
 import type { Note } from '../lib/notes';
 
@@ -17,6 +18,13 @@ interface NoteTileProps {
   notation: Notation;
   /** Pitch class shown as Sa. Ignored in Western notation. */
   tonic: number;
+  /**
+   * How this note was last played, kept after it stopped sounding. This is
+   * what makes the bed a record of a session rather than only a readout.
+   */
+  mark?: Mark | null;
+  /** True when the piece is waiting for this note to be played. */
+  isTarget?: boolean;
 }
 
 /** Cents at the edge of a tile's meter. Beyond this the marker pins. */
@@ -46,6 +54,8 @@ export function NoteTile({
   tolerance,
   notation,
   tonic,
+  mark = null,
+  isTarget = false,
 }: NoteTileProps) {
   const detected = detectedCents !== null;
   const inTune = detected && Math.abs(detectedCents) <= tolerance;
@@ -71,6 +81,18 @@ export function NoteTile({
     ink = 'text-graphite';
   }
 
+  /**
+   * Memory sits under the moment. A live reading always wins the wash: what
+   * you are playing now matters more than what you played a minute ago, and
+   * the cents readout beside it would otherwise disagree with the colour.
+   */
+  const remembered = mark ? (mark.inTune ? 'in-tune' : 'out') : null;
+
+  if (wash === '' && remembered !== null) {
+    wash = mark!.inTune ? 'bg-intune/20' : 'bg-signal/15';
+    ink = mark!.inTune ? 'text-intune' : 'text-graphite';
+  }
+
   /** A stable name for what this key is showing, for tests and styling alike. */
   const state = inTune ? 'in-tune' : detected ? 'out' : isActive ? 'active' : 'idle';
 
@@ -86,11 +108,17 @@ export function NoteTile({
     <button
       type="button"
       onClick={() => onPlay(note)}
-      aria-label={`Play ${spokenLabel(note, notation, tonic)}, ${note.frequency.toFixed(2)} hertz`}
+      aria-label={`Play ${spokenLabel(note, notation, tonic)}, ${note.frequency.toFixed(2)} hertz${
+        isTarget ? ' — play this next' : ''
+      }`}
       aria-current={detected ? 'true' : undefined}
       data-state={state}
+      data-mark={remembered ?? undefined}
+      data-target={isTarget ? 'true' : undefined}
       title={`${note.label} · ${note.frequency.toFixed(2)} Hz`}
-      className={`group relative flex h-full w-full items-center justify-center overflow-hidden transition-colors duration-150 ${base} ${ink}`}
+      className={`group relative flex h-full w-full items-center justify-center overflow-hidden transition-colors duration-150 ${base} ${ink} ${
+        isTarget ? "outline outline-2 -outline-offset-2 outline-graphite" : ""
+      }`}
     >
       {/* The state wash, over an opaque key rather than over the grid. */}
       <span
