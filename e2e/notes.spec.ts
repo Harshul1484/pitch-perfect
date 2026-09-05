@@ -249,3 +249,69 @@ test('changing a piece tonic transposes it rather than rewriting it', async () =
 
   await context.close();
 });
+
+test('undo steps back, and survives a reload', async () => {
+  const { context, page } = await openSignedIn('notes-undo');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+  await page.getByRole('button', { name: 'sargam' }).click();
+
+  for (const key of ['S', 'R', 'G']) await page.keyboard.press(key);
+  await expect(written.getByText('Ga', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'undo' }).click();
+  await expect(written.getByText('Ga', { exact: true })).toHaveCount(0);
+  await expect(written.getByText('Re', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'redo' }).click();
+  await expect(written.getByText('Ga', { exact: true })).toBeVisible();
+
+  // Let the write land, then come back to the piece.
+  await expect(page.getByText('saved', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.getByRole('button', { name: 'Untitled' }).click();
+
+  // The trail came back with the piece rather than starting empty.
+  const reloaded = page.getByRole('group', { name: 'written notation' });
+  await page.getByRole('button', { name: 'undo' }).click();
+  await expect(reloaded.getByText('Ga', { exact: true })).toHaveCount(0);
+
+  await context.close();
+});
+
+test('drags across the page to select, then replaces the selection', async () => {
+  const { context, page } = await openSignedIn('notes-drag');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+  await page.getByRole('button', { name: 'sargam' }).click();
+
+  for (const key of ['S', 'R', 'G', 'm']) await page.keyboard.press(key);
+
+  // Drag from the first cell across to the third.
+  const first = written.getByText('Sa', { exact: true });
+  const third = written.getByText('Ga', { exact: true });
+  await first.hover();
+  await page.mouse.down();
+  await third.hover();
+  await page.mouse.up();
+
+  await expect(written.locator('[data-selected="true"]')).not.toHaveCount(0);
+
+  // Typing replaces what was dragged over.
+  await page.keyboard.press('P');
+  await expect(written.getByText('Pa', { exact: true })).toBeVisible();
+  await expect(written.getByText('Sa', { exact: true })).toHaveCount(0);
+  // The note past the selection is untouched.
+  await expect(written.getByText('Ma', { exact: true })).toBeVisible();
+
+  await context.close();
+});

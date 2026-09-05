@@ -60,3 +60,64 @@ export function redo<T>(history: History<T>): History<T> {
     future: rest,
   };
 }
+
+/**
+ * Keeping history across a reload.
+ *
+ * Undo lives in localStorage keyed by the piece, not in Firestore. It is
+ * per-person scratch state, it would bloat every document, and every keystroke
+ * would become a write. Fewer states are kept than in memory, because this has
+ * to be serialised on each edit.
+ */
+const STORED_STATES = 40;
+
+function storageKey(pieceId: string): string {
+  return `pitch.history.${pieceId}`;
+}
+
+export function saveHistory<T>(pieceId: string, history: History<T>): void {
+  try {
+    window.localStorage.setItem(
+      storageKey(pieceId),
+      JSON.stringify({
+        past: history.past.slice(-STORED_STATES),
+        present: history.present,
+        future: history.future.slice(0, STORED_STATES),
+      }),
+    );
+  } catch {
+    // Losing undo across a reload is not worth failing an edit over.
+  }
+}
+
+/**
+ * Read history back, but only if its present state still matches the document
+ * as saved. If the piece changed elsewhere — another device, another tab — the
+ * stored steps describe a document that no longer exists, and replaying them
+ * would resurrect it.
+ */
+export function loadHistory<T>(
+  pieceId: string,
+  matches: (present: T) => boolean,
+): History<T> | null {
+  try {
+    const raw = window.localStorage.getItem(storageKey(pieceId));
+    if (raw === null) return null;
+
+    const parsed = JSON.parse(raw) as History<T>;
+    if (!Array.isArray(parsed.past) || !Array.isArray(parsed.future)) return null;
+    if (!matches(parsed.present)) return null;
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearHistory(pieceId: string): void {
+  try {
+    window.localStorage.removeItem(storageKey(pieceId));
+  } catch {
+    // Nothing to do.
+  }
+}

@@ -1,5 +1,16 @@
-import { describe, expect, it } from 'vitest';
-import { HISTORY_LIMIT, canRedo, canUndo, initial, record, redo, undo } from './history';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  HISTORY_LIMIT,
+  canRedo,
+  canUndo,
+  clearHistory,
+  initial,
+  loadHistory,
+  record,
+  redo,
+  saveHistory,
+  undo,
+} from './history';
 
 describe('history', () => {
   it('starts with nothing to undo or redo', () => {
@@ -63,5 +74,55 @@ describe('history', () => {
     undo(history);
 
     expect(JSON.stringify(history)).toBe(before);
+  });
+});
+
+describe('history across a reload', () => {
+  afterEach(() => window.localStorage.clear());
+
+  it('comes back when the document still matches', () => {
+    const history = record(initial('a'), 'b');
+    saveHistory('piece', history);
+
+    const loaded = loadHistory<string>('piece', (present) => present === 'b');
+
+    expect(loaded).not.toBeNull();
+    expect(loaded?.present).toBe('b');
+    expect(undo(loaded!).present).toBe('a');
+  });
+
+  it('is discarded when the document has moved on elsewhere', () => {
+    saveHistory('piece', record(initial('a'), 'b'));
+
+    // The piece now says something else, so those steps describe a document
+    // that no longer exists.
+    expect(loadHistory<string>('piece', (present) => present === 'z')).toBeNull();
+  });
+
+  it('is null when there is nothing stored', () => {
+    expect(loadHistory<string>('missing', () => true)).toBeNull();
+  });
+
+  it('survives rubbish in storage rather than throwing', () => {
+    window.localStorage.setItem('pitch.history.piece', 'not json');
+
+    expect(loadHistory<string>('piece', () => true)).toBeNull();
+  });
+
+  it('can be cleared', () => {
+    saveHistory('piece', initial('a'));
+    clearHistory('piece');
+
+    expect(loadHistory<string>('piece', () => true)).toBeNull();
+  });
+
+  it('keeps storage bounded', () => {
+    let history = initial(0);
+    for (let step = 1; step <= 300; step += 1) history = record(history, step);
+    saveHistory('piece', history);
+
+    const raw = window.localStorage.getItem('pitch.history.piece') ?? '';
+    const stored = JSON.parse(raw) as { past: number[] };
+    expect(stored.past.length).toBeLessThanOrEqual(40);
   });
 });

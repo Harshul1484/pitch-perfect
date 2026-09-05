@@ -24,9 +24,12 @@ import {
 import {
   canRedo,
   canUndo,
+  clearHistory,
   initial,
+  loadHistory,
   record,
   redo,
+  saveHistory,
   undo,
   type History,
 } from '../lib/history';
@@ -88,7 +91,17 @@ interface NotationEditorProps {
 export function NotationEditor({ composition, onSave, onDelete }: NotationEditorProps) {
   const [history, setHistory] = useState<History<DocState>>(() => {
     const lines = parseNotation(composition.notation);
-    return initial({ lines, caret: caretAtEnd(lines) });
+    const fresh = initial({ lines, caret: caretAtEnd(lines) });
+
+    // Undo from a previous visit, but only if it describes this document as it
+    // stands. If the piece moved on elsewhere, those steps are about a version
+    // that no longer exists.
+    return (
+      loadHistory<DocState>(
+        composition.id,
+        (present) => serializeLines(present.lines) === composition.notation,
+      ) ?? fresh
+    );
   });
   const { lines, caret } = history.present;
 
@@ -110,6 +123,11 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
   const playback = useNotationPlayback(lines, composition.tonic, bpm, 0.7, voice);
 
   const { id } = composition;
+
+  // Keep the undo trail with the piece, so a reload does not lose it.
+  useEffect(() => {
+    saveHistory(id, history);
+  }, [history, id]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -369,7 +387,11 @@ export function NotationEditor({ composition, onSave, onDelete }: NotationEditor
 
         <button
           type="button"
-          onClick={() => void onDelete(id)}
+          onClick={() => {
+            // A deleted piece has no history worth keeping around.
+            clearHistory(id);
+            void onDelete(id);
+          }}
           className={`${KEY} px-2 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
         >
           delete

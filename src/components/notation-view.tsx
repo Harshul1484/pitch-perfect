@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Caret } from '../lib/caret';
 import type { Line } from '../lib/composition';
 import type { Range } from '../lib/selection';
@@ -18,6 +18,16 @@ interface NotationViewProps {
   /** Pitch class of Sa, needed to name notes the Western way. */
   tonic: number;
   onCaretChange: (caret: Caret, extend: boolean) => void;
+}
+
+/** Read the caret position a pointer is over, from the cell under it. */
+function positionAt(target: EventTarget | null): Caret | null {
+  const element = (target as HTMLElement | null)?.closest?.('[data-line]');
+  if (!element) return null;
+
+  const line = Number(element.getAttribute('data-line'));
+  const index = Number(element.getAttribute('data-index'));
+  return Number.isFinite(line) && Number.isFinite(index) ? { line, index } : null;
 }
 
 /**
@@ -61,10 +71,47 @@ export function NotationView({
 
   const empty = lines.every((line) => line.length === 0);
 
+  /**
+   * Dragging across the page selects, the way it does in any text. The whole
+   * page listens rather than each cell, so a drag that starts on one cell and
+   * crosses others is one gesture instead of a series of unrelated events.
+   */
+  const dragging = useRef(false);
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      const at = positionAt(event.target);
+      if (!at) return;
+
+      dragging.current = true;
+      onCaretChange(at, event.shiftKey);
+    },
+    [onCaretChange],
+  );
+
+  const onPointerMove = useCallback(
+    (event: React.PointerEvent) => {
+      if (!dragging.current) return;
+
+      const at = positionAt(event.target);
+      // Extend to wherever the pointer has reached.
+      if (at) onCaretChange(at, true);
+    },
+    [onCaretChange],
+  );
+
+  const endDrag = useCallback(() => {
+    dragging.current = false;
+  }, []);
+
   return (
     <div
       role="group"
       aria-label="written notation"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerLeave={endDrag}
       className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
     >
       {empty && (
@@ -80,8 +127,9 @@ export function NotationView({
           {Array.from({ length: line.length + 1 }, (_, index) => (
             <CaretSlot
               key={`gap-${index}`}
+              line={lineIndex}
+              index={index}
               active={caret.line === lineIndex && caret.index === index}
-              onClick={(extend) => onCaretChange({ line: lineIndex, index }, extend)}
             />
           )).flatMap((slot, index) => {
             const token = line[index];
@@ -111,9 +159,8 @@ export function NotationView({
                 type="button"
                 // Clicking a cell puts the caret before it, so a wrong note can
                 // be deleted with one backspace.
-                onClick={(event) =>
-                  onCaretChange({ line: lineIndex, index }, event.shiftKey)
-                }
+                data-line={lineIndex}
+                data-index={index}
                 data-selected={selected(lineIndex, index) ? 'true' : undefined}
                 className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-[14px] transition-colors duration-100 ${
                   playing
@@ -185,16 +232,19 @@ function WesternName({ midi }: { midi: number }) {
 /** The gap between two cells, and the caret when it is here. */
 function CaretSlot({
   active,
-  onClick,
+  line,
+  index,
 }: {
   active: boolean;
-  onClick: (extend: boolean) => void;
+  line: number;
+  index: number;
 }) {
   return (
     <button
       type="button"
       aria-label="place caret"
-      onClick={(event) => onClick(event.shiftKey)}
+      data-line={line}
+      data-index={index}
       className="group relative h-8 w-2 shrink-0"
     >
       <span
