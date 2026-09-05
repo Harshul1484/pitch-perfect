@@ -110,6 +110,9 @@ describe('expire', () => {
     const at = state.marks[69].at;
 
     expect(expire(state, at + 4_999, 5_000).marks[69]).toBeDefined();
+    // The moment itself counts as up. The fade is scheduled for exactly this
+    // instant, so a mark that survived it would never be removed at all.
+    expect(expire(state, at + 5_000, 5_000).marks[69]).toBeUndefined();
     expect(expire(state, at + 5_001, 5_000).marks[69]).toBeUndefined();
   });
 

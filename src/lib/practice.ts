@@ -129,7 +129,10 @@ export function expire(
 ): PracticeState {
   if (holdMs === null) return state;
 
-  const kept = Object.entries(state.marks).filter(([, mark]) => now - mark.at <= holdMs);
+  // Strictly less than: a five second hold is over *at* five seconds. The
+  // fade is scheduled for exactly that moment, so keeping the mark on the
+  // boundary would leave it with nothing left to remove it.
+  const kept = Object.entries(state.marks).filter(([, mark]) => now - mark.at < holdMs);
   if (kept.length === Object.keys(state.marks).length) return state;
 
   return { ...state, marks: Object.fromEntries(kept) };
