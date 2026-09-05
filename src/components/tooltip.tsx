@@ -38,7 +38,7 @@ export function Tooltip({ label, side = 'top', className = '', children }: Toolt
 
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute z-50 whitespace-nowrap rounded-[6px] border border-graphite bg-graphite px-2 py-1 font-mono text-[10px] lowercase leading-none tracking-[0.06em] text-panel opacity-0 shadow-[0_2px_6px_rgba(43,43,43,0.18)] transition-[opacity,transform] duration-200 ease-out group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 ${PLACEMENT[side]}`}
+        className={`pointer-events-none absolute z-50 whitespace-nowrap rounded-[4px] border border-graphite bg-graphite px-2 py-1 font-mono text-[10px] lowercase leading-none tracking-[0.06em] text-panel opacity-0 shadow-[0_2px_6px_rgba(43,43,43,0.18)] transition-[opacity,transform] duration-200 ease-out group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 ${PLACEMENT[side]}`}
       >
         {label}
         <span

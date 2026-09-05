@@ -8,13 +8,17 @@ import { useRecorder } from '../hooks/use-recorder';
 import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
+import { useHoldPreference, usePractice } from '../hooks/use-practice';
+import { useMedia } from '../hooks/use-media';
 import type { Notation } from '../lib/notation';
 import { AccountControl } from '../components/account-control';
-import { ControlsPopover } from '../components/controls-popover';
+import { ControlsPanel, ControlsPopover } from '../components/controls-popover';
 import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
+import { Mark } from '../components/mark';
 import { MAX_BPM, MIN_BPM } from '../lib/metronome';
 import { MetronomePanel } from '../components/metronome-panel';
+import { PracticeControl } from '../components/practice-control';
 import { RecordControl } from '../components/record-control';
 import { TunerColumn } from '../components/tuner-column';
 
@@ -59,6 +63,19 @@ export function Dashboard() {
 
   const recorder = useRecorder(match, tolerance);
 
+  /*
+   * Where the readout column has room to spare, the controls live in it as a
+   * panel rather than behind a button in the header. Rendered rather than
+   * hidden: a display:none copy is still in the document, and two controls
+   * answering to one name is a bug for a screen reader and a test alike.
+   */
+  const roomy = useMedia('(min-height: 880px)');
+
+  // Practice: the bed keeps what it heard, rather than only showing it.
+  const [practising, setPractising] = useState(false);
+  const [holdMs, setHoldMs] = useHoldPreference();
+  const practice = usePractice(match, tolerance, holdMs, practising);
+
   useEffect(() => {
     return () => {
       if (flashTimer.current !== null) {
@@ -87,11 +104,20 @@ export function Dashboard() {
      * a phone held upright that frame is the rotated one.
      */
     <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
-      <header className="flex shrink-0 items-end justify-between gap-2 px-0.5">
-        <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em] short:text-[15px]">
-          pitch
+      <header className="flex shrink-0 items-center justify-between gap-2 px-0.5">
+        <h1 className="flex shrink-0 items-center gap-2 text-[18px] font-semibold leading-none tracking-[-0.02em] short:gap-1.5 short:text-[14px]">
+          <Mark />
+          {/* The name stands down where the header runs out of width; the
+              mark still says whose app this is. */}
+          <span className="narrow:sr-only">Perfect Pitch</span>
         </h1>
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-1.5">
+        {/*
+         * Grouped by what the controls are for, with the gaps doing the
+         * grouping: tight inside a group, wide between. Eight caps in a row at
+         * even spacing left it to the reader to work out what belonged with
+         * what, which is a job the layout should have done.
+         */}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-2">
           <Link
             to="/notes"
             className={
@@ -100,43 +126,60 @@ export function Dashboard() {
           >
             notes &rarr;
           </Link>
-          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           <NotationSwitch notation={notation} onNotationChange={setNotation} />
-          <RecordControl
-            isRecording={recorder.isRecording}
-            elapsedMs={recorder.elapsedMs}
-            disabled={status !== 'listening'}
-            onToggle={recorder.isRecording ? recorder.stop : recorder.start}
-            summary={recorder.summary}
-            tolerance={tolerance}
-            notation={notation}
-            tonic={tonic}
-            bpm={bpm}
-            onSave={
-              uid === null
-                ? null
-                : async (title, text) => {
-                    // Loaded on demand: Firestore is the heaviest thing in the
-                    // app and the tuner otherwise never needs it.
-                    const { saveRecording } = await import('../lib/save-recording');
-                    await saveRecording(uid, title, text, tonic);
-                  }
-            }
-            onDiscard={recorder.discard}
-          />
-          <ControlsPopover
-            tolerance={tolerance}
-            onToleranceChange={setTolerance}
-            sustain={sustain}
-            onSustainChange={setSustain}
-            tonic={tonic}
-            onTonicChange={setTonic}
-            droneOn={drone.isOn}
-            onDroneToggle={drone.toggle}
-            voice={voice}
-            onVoiceChange={setVoice}
-          />
-          <span aria-hidden="true" className="h-4 w-px bg-hairline short:hidden" />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
+
+          {/* The two things you reach for while playing, kept together. */}
+          <span className="flex items-center gap-1.5 short:gap-1">
+            <RecordControl
+              isRecording={recorder.isRecording}
+              elapsedMs={recorder.elapsedMs}
+              disabled={status !== 'listening'}
+              onToggle={recorder.isRecording ? recorder.stop : recorder.start}
+              summary={recorder.summary}
+              tolerance={tolerance}
+              notation={notation}
+              tonic={tonic}
+              bpm={bpm}
+              onSave={
+                uid === null
+                  ? null
+                  : async (title, text) => {
+                      // Loaded on demand: Firestore is the heaviest thing in the
+                      // app and the tuner otherwise never needs it.
+                      const { saveRecording } = await import('../lib/save-recording');
+                      await saveRecording(uid, title, text, tonic);
+                    }
+              }
+              onDiscard={recorder.discard}
+            />
+            <PracticeControl
+              on={practising}
+              onToggle={() => setPractising((on) => !on)}
+              holdMs={holdMs}
+              onHoldChange={setHoldMs}
+              onReset={practice.reset}
+              marked={Object.keys(practice.marks).length}
+            />
+          </span>
+
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
+          {!roomy && (
+            <ControlsPopover
+              tolerance={tolerance}
+              onToleranceChange={setTolerance}
+              sustain={sustain}
+              onSustainChange={setSustain}
+              tonic={tonic}
+              onTonicChange={setTonic}
+              droneOn={drone.isOn}
+              onDroneToggle={drone.toggle}
+              voice={voice}
+              onVoiceChange={setVoice}
+            />
+          )}
+          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           <AccountControl {...auth} />
         </div>
       </header>
@@ -161,8 +204,24 @@ export function Dashboard() {
             isRunning={metronome.isRunning}
             beat={metronome.beat}
             onToggle={metronome.toggle}
-            micOpen={status === 'listening'}
           />
+
+          {/* Only where the column has room left over; otherwise the header
+              keeps its button and this is not rendered at all. */}
+          {roomy && (
+            <ControlsPanel
+              tolerance={tolerance}
+              onToleranceChange={setTolerance}
+              sustain={sustain}
+              onSustainChange={setSustain}
+              tonic={tonic}
+              onTonicChange={setTonic}
+              droneOn={drone.isOn}
+              onDroneToggle={drone.toggle}
+              voice={voice}
+              onVoiceChange={setVoice}
+            />
+          )}
         </div>
 
         <Keybed
@@ -173,6 +232,7 @@ export function Dashboard() {
           detectedMidi={match?.note.midi ?? null}
           detectedCents={match?.cents ?? null}
           tolerance={tolerance}
+          marks={practice.marks}
         />
       </div>
     </div>

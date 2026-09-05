@@ -5,6 +5,7 @@ import type { Range } from '../lib/selection';
 import { midiFor } from '../lib/composition';
 import { swaraOfDegree, type Notation } from '../lib/notation';
 import { noteAt } from '../lib/notes';
+import type { Verdict } from '../lib/run';
 import { Swara } from './swara';
 
 interface NotationViewProps {
@@ -18,6 +19,10 @@ interface NotationViewProps {
   /** Pitch class of Sa, needed to name notes the Western way. */
   tonic: number;
   onCaretChange: (caret: Caret, extend: boolean) => void;
+  /** How each note was played while practising, by token index. */
+  verdicts?: Record<number, Verdict>;
+  /** The note practice is waiting for, by token index. */
+  targetIndex?: number | null;
 }
 
 /** Read the caret position a pointer is over, from the cell under it. */
@@ -48,6 +53,8 @@ export function NotationView({
   notation,
   tonic,
   onCaretChange,
+  verdicts,
+  targetIndex = null,
 }: NotationViewProps) {
   /** Whether the token at this position falls inside the selection. */
   const selected = (line: number, index: number): boolean => {
@@ -162,12 +169,22 @@ export function NotationView({
                 data-line={lineIndex}
                 data-index={index}
                 data-selected={selected(lineIndex, index) ? 'true' : undefined}
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-[14px] transition-colors duration-100 ${
+                data-verdict={verdicts?.[flat]}
+                data-target={flat === targetIndex ? 'true' : undefined}
+                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] text-[14px] transition-colors duration-100 short:h-7 short:w-7 ${
                   playing
                     ? 'bg-signal/15 text-signal'
                     : selected(lineIndex, index)
                       ? 'bg-graphite/15 text-graphite'
-                      : 'text-graphite hover:bg-black/5'
+                      : verdicts?.[flat] === 'hit'
+                        ? 'bg-intune/20 text-intune'
+                        : verdicts?.[flat]
+                          ? 'bg-signal/15 text-graphite'
+                          : 'text-graphite hover:bg-black/5'
+                } ${
+                  flat === targetIndex
+                    ? 'outline-2 -outline-offset-2 outline-graphite'
+                    : ''
                 }`}
               >
                 {token.kind === 'sustain' ? (
@@ -200,10 +217,18 @@ export function NotationView({
                       className="absolute -bottom-1.5 left-0 h-2 w-1/2 rounded-bl-[999px] border-b-2 border-l-2 border-signal/50"
                     />
                   ) : (
+                    /*
+                      Centre to centre. The arc joins the two notes that share
+                      a beat, so it starts under the middle of the one before
+                      and ends under the middle of this one — half a cell each
+                      side, plus the 8px caret slot between them. It used to
+                      run to this cell's right edge, which left it looking
+                      shunted one place along.
+                    */
                     <span
                       data-tie=""
                       aria-hidden="true"
-                      className="absolute -bottom-1.5 -left-2.5 h-2 w-[calc(100%+0.625rem)] rounded-b-[999px] border-b-2 border-l-2 border-r-2 border-signal/50"
+                      className="absolute -bottom-1.5 left-[calc(-50%-8px)] h-2 w-[calc(100%+8px)] rounded-b-[999px] border-b-2 border-l-2 border-r-2 border-signal/50"
                     />
                   ))}
               </button>,

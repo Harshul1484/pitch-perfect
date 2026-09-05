@@ -82,9 +82,20 @@ for (const phone of PHONES) {
       expectNothingCutOff(await audit(page));
     });
 
+    test('the practice panel opens without falling off the screen', async ({ page }) => {
+      await page.goto(BASE_URL);
+      await page.getByRole('button', { name: 'practice', exact: true }).click();
+      await page.getByRole('button', { name: 'practice settings' }).click();
+      await expect(page.getByRole('dialog', { name: 'practice settings' })).toBeVisible();
+
+      expectNothingCutOff(await audit(page));
+    });
+
     test('the notes page fits on the screen', async ({ page }) => {
       await page.goto(`${BASE_URL}/notes`);
-      await expect(page.getByRole('heading', { name: 'notes', exact: true })).toBeVisible();
+      // Signed out, this page is the product's front door and heads with the
+      // product name rather than the section's.
+      await expect(page.getByRole('heading', { name: /perfect pitch/i })).toBeVisible();
 
       expectNothingCutOff(await audit(page));
     });

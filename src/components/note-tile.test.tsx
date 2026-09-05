@@ -101,3 +101,48 @@ describe('NoteTile while a note is being heard', () => {
     expect(screen.getByRole('button')).toHaveAttribute('data-state', 'in-tune');
   });
 });
+
+describe('NoteTile, remembering', () => {
+  const mark = (midi: number, inTune: boolean) => ({
+    midi,
+    cents: inTune ? 3 : 28,
+    inTune,
+    at: 0,
+  });
+
+  it('remembers a note that was played in tune', () => {
+    render(<NoteTile {...base} note={middleC} mark={mark(60, true)} />);
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-mark', 'in-tune');
+  });
+
+  it('remembers a note that was played out', () => {
+    render(<NoteTile {...base} note={middleC} mark={mark(60, false)} />);
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-mark', 'out');
+  });
+
+  it('says nothing when the note has not been played', () => {
+    render(<NoteTile {...base} note={middleC} />);
+
+    expect(screen.getByRole('button')).not.toHaveAttribute('data-mark');
+  });
+
+  it('says which note you are meant to play next', () => {
+    render(<NoteTile {...base} note={middleC} isTarget />);
+
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('data-target', 'true');
+    // Named, not merely outlined, so it is findable without seeing the colour.
+    expect(button).toHaveAccessibleName(/play this next/i);
+  });
+
+  it('lets the note being played now win over what it remembers', () => {
+    render(
+      <NoteTile {...base} note={middleC} detectedCents={2} mark={mark(60, false)} />,
+    );
+
+    // The live reading is the truth of the moment; a mark is only memory.
+    expect(screen.getByRole('button')).toHaveAttribute('data-state', 'in-tune');
+  });
+});

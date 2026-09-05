@@ -9,7 +9,7 @@ import { expectStaysDark } from './cap';
  * The notes feature, end to end against the Firebase emulators.
  *
  * Requires the emulators to be running:
- *   firebase emulators:start --only auth,firestore
+ *   firebase emulators:start --project <projectId>
  *
  * The app connects to them when the page is loaded with ?emulator=1, which is
  * ignored outside a development build. That lets this drive the real
@@ -22,6 +22,14 @@ const NOTES_URL = `${BASE_URL}/notes?emulator=1`;
 async function openSignedIn(
   name: string,
   screen?: { width: number; height: number },
+  /** Inject a microphone playing this pitch, for practising. */
+  hz?: number,
+  /**
+   * The notation to open in. There is no switch on this page any more — it is
+   * one setting for the whole app, set on the tuner — so a test that wants
+   * sargam seeds the preference the page reads.
+   */
+  notation?: 'western' | 'sargam',
 ): Promise<{ context: import('@playwright/test').BrowserContext; page: Page }> {
   // A fresh profile every run. These tests sign in, so a profile left over
   // from last time comes back already signed in — and then the sign-in button
@@ -33,16 +41,56 @@ async function openSignedIn(
 
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chrome',
-    args: ['--autoplay-policy=no-user-gesture-required'],
+    args: [
+      '--autoplay-policy=no-user-gesture-required',
+      ...(hz ? ['--use-fake-ui-for-media-stream'] : []),
+    ],
     ...(screen ? { viewport: screen, hasTouch: true, isMobile: true } : {}),
   });
+
+  if (hz) {
+    await context.grantPermissions(['microphone'], { origin: BASE_URL });
+    await context.addInitScript((frequency: number) => {
+      navigator.mediaDevices.getUserMedia = async () => {
+        const audio = new AudioContext();
+        await audio.resume();
+        const destination = audio.createMediaStreamDestination();
+
+        // A few partials, so the detector sees a string rather than a sine.
+        [1, 0.65, 0.45, 0.3].forEach((amplitude, index) => {
+          const oscillator = audio.createOscillator();
+          const gain = audio.createGain();
+          oscillator.frequency.value = frequency * (index + 1);
+          gain.gain.value = amplitude * 0.15;
+          oscillator.connect(gain);
+          gain.connect(destination);
+          oscillator.start();
+        });
+
+        return destination.stream;
+      };
+    }, hz);
+  }
+
+  if (notation) {
+    // Seed only when unset. This script runs on every load, reloads included,
+    // so setting it unconditionally would overwrite a change made mid-test and
+    // silently undo the very switch the test is checking.
+    await context.addInitScript((value: string) => {
+      if (window.localStorage.getItem('pitch.notation') === null) {
+        window.localStorage.setItem('pitch.notation', value);
+      }
+    }, notation);
+  }
 
   const page = await context.newPage();
   await page.goto(NOTES_URL);
 
   const [popup] = await Promise.all([
     page.waitForEvent('popup'),
-    page.getByRole('button', { name: 'sign in' }).click(),
+    // The page's own button, not the emulator's: "Continue with Google" here,
+    // "Sign in with Google" in the popup that opens.
+    page.getByRole('button', { name: /continue with google/i }).click(),
   ]);
 
   // The Auth emulator serves its own chooser: add an account, let it invent
@@ -76,13 +124,31 @@ async function openSignedIn(
   return { context, page };
 }
 
+/**
+ * Change the notation the app is set to, and come back to the piece.
+ *
+ * The switch is on the tuner now — one setting for the whole app — so a test
+ * that wants the other naming sets the preference and reloads rather than
+ * reaching for a control this page no longer has.
+ */
+async function renameNotes(page: Page, notation: 'western' | 'sargam', piece: string) {
+  await page.evaluate(
+    (value) => window.localStorage.setItem('pitch.notation', value),
+    notation,
+  );
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.getByRole('button', { name: piece }).click();
+}
+
 test('writes a phrase, saves it, and still has it after a reload', async () => {
-  const { context, page } = await openSignedIn('notes');
+  // Pin the naming, rather than depending on a remembered preference.
+  const { context, page } = await openSignedIn('notes', undefined, undefined, 'sargam');
 
   await page.getByRole('button', { name: 'new' }).click();
   await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
-  // Pin the naming, rather than depending on a remembered preference.
-  await page.getByRole('button', { name: 'sargam' }).click();
 
   // Type the opening of the notebook phrase: Sa Re ma Pa, then hold.
   await page.getByRole('button', { name: 'insert Sa' }).click();
@@ -161,12 +227,11 @@ test('one user cannot see another user notes', async () => {
 });
 
 test('corrects a note in the middle of a line, not just at the end', async () => {
-  const { context, page } = await openSignedIn('notes-caret');
+  const { context, page } = await openSignedIn('notes-caret', undefined, undefined, 'sargam');
 
   await page.getByRole('button', { name: 'new' }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
-  await page.getByRole('button', { name: 'sargam' }).click();
 
   for (const key of ['S', 'R', 'P', 'G']) await page.keyboard.press(key);
 
@@ -219,21 +284,31 @@ test('writes bar lines and ties', async () => {
 });
 
 test('names the written notes in Western or sargam, on demand', async () => {
-  const { context, page } = await openSignedIn('notes-notation');
+  const { context, page } = await openSignedIn(
+    'notes-notation',
+    undefined,
+    undefined,
+    'sargam',
+  );
 
   await page.getByRole('button', { name: 'new' }).click();
-  const written = page.getByRole('group', { name: 'written notation' });
+  let written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
   // A new piece has Sa on C, so the tonic itself is C4.
-  await page.getByRole('button', { name: 'sargam' }).click();
   await page.keyboard.press('S');
   await page.keyboard.press('P');
   await expect(written.getByText('Sa', { exact: true })).toBeVisible();
   await expect(written.getByText('Pa', { exact: true })).toBeVisible();
 
+  // Wait for the write, so reloading does not lose the phrase.
+  await expect(page.getByText('saved', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+
   // The same two notes, named the Western way.
-  await page.getByRole('button', { name: 'western' }).click();
+  await renameNotes(page, 'western', 'Untitled');
+  written = page.getByRole('group', { name: 'written notation' });
   await expect(written.getByText('C4', { exact: true })).toBeVisible();
   await expect(written.getByText('G4', { exact: true })).toBeVisible();
   await expect(written.getByText('Sa', { exact: true })).toHaveCount(0);
@@ -242,13 +317,16 @@ test('names the written notes in Western or sargam, on demand', async () => {
 });
 
 test('changing a piece tonic transposes it rather than rewriting it', async () => {
-  const { context, page } = await openSignedIn('notes-tonic');
+  const { context, page } = await openSignedIn(
+    'notes-tonic',
+    undefined,
+    undefined,
+    'western',
+  );
 
   await page.getByRole('button', { name: 'new' }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
-
-  await page.getByRole('button', { name: 'western' }).click();
   // Sa and Pa with Sa on C: C4 and G4.
   await page.keyboard.press('S');
   await page.keyboard.press('P');
@@ -263,20 +341,24 @@ test('changing a piece tonic transposes it rather than rewriting it', async () =
   await expect(written.getByText('C4', { exact: true })).toHaveCount(0);
 
   // In sargam it is still Sa and Pa, because the degrees never moved.
-  await page.getByRole('button', { name: 'sargam' }).click();
-  await expect(written.getByText('Sa', { exact: true })).toBeVisible();
-  await expect(written.getByText('Pa', { exact: true })).toBeVisible();
+  await expect(page.getByText('saved', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await renameNotes(page, 'sargam', 'Untitled');
+
+  const sargam = page.getByRole('group', { name: 'written notation' });
+  await expect(sargam.getByText('Sa', { exact: true })).toBeVisible();
+  await expect(sargam.getByText('Pa', { exact: true })).toBeVisible();
 
   await context.close();
 });
 
 test('undo steps back, and survives a reload', async () => {
-  const { context, page } = await openSignedIn('notes-undo');
+  const { context, page } = await openSignedIn('notes-undo', undefined, undefined, 'sargam');
 
   await page.getByRole('button', { name: 'new' }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
-  await page.getByRole('button', { name: 'sargam' }).click();
 
   for (const key of ['S', 'R', 'G']) await page.keyboard.press(key);
   await expect(written.getByText('Ga', { exact: true })).toBeVisible();
@@ -307,12 +389,11 @@ test('undo steps back, and survives a reload', async () => {
 });
 
 test('drags across the page to select, then replaces the selection', async () => {
-  const { context, page } = await openSignedIn('notes-drag');
+  const { context, page } = await openSignedIn('notes-drag', undefined, undefined, 'sargam');
 
   await page.getByRole('button', { name: 'new' }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
-  await page.getByRole('button', { name: 'sargam' }).click();
 
   for (const key of ['S', 'R', 'G', 'm']) await page.keyboard.press(key);
 
@@ -349,7 +430,14 @@ for (const screen of [
   { name: 'iphone 14', width: 844, height: 390 },
 ]) {
   test(`writes on a ${screen.name} without anything falling off the screen`, async () => {
-    const { context, page } = await openSignedIn(`notes-mobile-${screen.width}`, screen);
+    // Swara marks and Western names set differently, and either could be the
+    // one that overflows, so the two sizes cover one naming each.
+    const { context, page } = await openSignedIn(
+      `notes-mobile-${screen.width}`,
+      screen,
+      undefined,
+      screen.width < 800 ? 'sargam' : 'western',
+    );
 
     await page.getByRole('button', { name: 'new' }).click();
     const written = page.getByRole('group', { name: 'written notation' });
@@ -361,12 +449,6 @@ for (const screen of [
     }
     await expect(written.locator('[data-bar]')).toHaveCount(1);
 
-    expectNothingCutOff(await audit(page));
-
-    // Both notations, since the swara marks and the Western names are set
-    // differently and either could be the one that overflows.
-    await page.getByRole('button', { name: 'sargam' }).click();
-    await expect(written.getByText('Sa', { exact: true }).first()).toBeVisible();
     expectNothingCutOff(await audit(page));
 
     await context.close();
@@ -443,6 +525,108 @@ test('stopping playback silences what is already scheduled', async () => {
   expect(afterStop, 'stop reached the audio graph').toBeGreaterThan(scheduled);
 
   await expect(page.getByRole('button', { name: 'play', exact: true })).toBeVisible();
+
+  await context.close();
+});
+
+/**
+ * Practising a written piece.
+ *
+ * The microphone plays middle C throughout, so the first note of the piece is
+ * the one being played and the rest are not — which is exactly what a
+ * self-paced stage should show: one note got, and then a wait.
+ */
+test('practising a piece follows it note by note', async () => {
+  const { context, page } = await openSignedIn('notes-practice', undefined, 261.63);
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+
+  for (const key of ['S', 'R', 'G']) await page.keyboard.press(key);
+
+  // Practice first, microphone second. The injected tone sounds from the
+  // moment the page loads, so opening the microphone before asserting the
+  // starting state would race it — the first note can be got before the
+  // assertion runs.
+  await page.getByRole('button', { name: 'practice', exact: true }).click();
+
+  // Caret slots carry data-line too, so the note cells are the ones that are
+  // not slots. Without this, .first() is the caret before the first note.
+  const cells = written.locator('button[data-line]:not([aria-label="place caret"])');
+
+  // Before anything is heard, the first note is the one being waited for.
+  await expect(cells.nth(0)).toHaveAttribute('data-target', 'true');
+
+  await page.getByRole('button', { name: 'listen', exact: true }).click();
+
+  // Middle C is that note, so it is got and the target moves to the second.
+  await expect(cells.nth(0)).toHaveAttribute('data-verdict', 'hit', { timeout: 15_000 });
+  await expect(cells.nth(1)).toHaveAttribute('data-target', 'true');
+
+  // The bed alongside remembers the same note.
+  await expect(page.getByRole('button', { name: /^Play C4/ })).toHaveAttribute(
+    'data-mark',
+    'in-tune',
+  );
+
+  // The piece waits: the second note is never played, so it is never got.
+  await expect(cells.nth(1)).not.toHaveAttribute('data-verdict', 'hit');
+
+  await context.close();
+});
+
+test('the swara keyboard gives way to the bed while practising', async () => {
+  const { context, page } = await openSignedIn('notes-practice-bed');
+
+  await page.getByRole('button', { name: 'new' }).click();
+  await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
+
+  await expect(page.getByRole('group', { name: 'saptak' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'practice', exact: true }).click();
+
+  await expect(page.getByRole('group', { name: 'saptak' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Play / }).first()).toBeVisible();
+
+  await context.close();
+});
+
+/**
+ * The timed run.
+ *
+ * The microphone plays middle C throughout, so of a three-note piece exactly
+ * one note is the note being played and the other two are not. A run that
+ * scored everything, or nothing, would pass a weaker assertion than this one.
+ */
+test('a timed run counts in and then scores the piece', async () => {
+  const { context, page } = await openSignedIn('notes-run', undefined, 261.63);
+
+  await page.getByRole('button', { name: 'new' }).click();
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+
+  // Sa Re Ga on a piece whose Sa is C: C4, D4, E4.
+  for (const key of ['S', 'R', 'G']) await page.keyboard.press(key);
+
+  await page.getByRole('button', { name: 'listen', exact: true }).click();
+  await page.getByRole('button', { name: 'practice', exact: true }).click();
+  await page.getByRole('button', { name: 'practice settings' }).click();
+
+  const panel = page.getByRole('dialog', { name: 'practice settings' });
+  await panel.getByRole('button', { name: 'run', exact: true }).click();
+  await panel.getByRole('button', { name: 'start the run' }).click();
+
+  // The run says where it is above the bed, not in the panel — and the
+  // count-in is a three second window, so this accepts either side of it
+  // rather than trying to catch one frame of it.
+  await expect(page.getByText(/counting in|playing/i)).toBeVisible({ timeout: 5_000 });
+
+  // A bar of count-in, then the piece: at 80bpm that is 3s plus 2.25s.
+  await expect(panel.getByText(/in tune, in time/)).toBeVisible({ timeout: 20_000 });
+
+  // Only the first note is the one being played, so only it can be a hit.
+  await expect(panel.getByText('1 of 3 in tune, in time.')).toBeVisible();
 
   await context.close();
 });

@@ -11,15 +11,59 @@
  * 360–430px tall, which is roughly half a laptop; the breakpoint is on height
  * rather than width because height is what actually runs out.
  *
+ * The threshold is 600px, not the phone's 430, because of what sits between:
+ * the full-size layout needs about 556px, so a window of 540 was too tall for
+ * the compact layout and too short for the full one, and the readout column
+ * ran off the bottom of the screen. The variant has to start before the
+ * layout stops fitting, not where phones end.
+ *
  * The second query is the same question asked of a phone held upright. Media
  * queries only ever see the device, never the quarter turn applied below, so
  * there the layout's height is the viewport's *width*.
  */
 @custom-variant short {
-  @media (max-height: 520px) {
+  @media (max-height: 600px) {
     @slot;
   }
   @media (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
+    @slot;
+  }
+}
+
+/*
+ * The counterpart to `short`: a screen with height to spend. The readout is
+ * the one thing you look at while playing, so where there is room it takes it.
+ */
+@custom-variant tall (@media (min-height: 760px));
+
+/*
+ * Taller still: enough for the controls to live in the readout column as a
+ * panel instead of behind a button. Swept with the microphone alert showing,
+ * which is the tallest that column ever gets — it still overflowed at 840 and
+ * was clean from 860, so this starts at 880.
+ */
+@custom-variant roomy (@media (min-height: 880px));
+
+/*
+ * The counterpart to `short`: a screen with height to spend. The readout is
+ * the one thing you look at while playing, so where there is room it takes it.
+ */
+@custom-variant tall (@media (min-height: 760px));
+
+/*
+ * `narrow` is the width counterpart to `short`. Some things are given up for
+ * want of height and some for want of width, and the two are not the same
+ * screen: a wide, short window has room for the product name and no room for
+ * a tall readout. Gating a width decision on `short` hid the name on laptops.
+ *
+ * Second query for the same reason `short` needs one: rotated, the layout's
+ * width is the viewport's height.
+ */
+@custom-variant narrow {
+  @media (max-width: 700px) {
+    @slot;
+  }
+  @media (orientation: portrait) and (pointer: coarse) and (max-height: 700px) {
     @slot;
   }
 }
@@ -44,7 +88,14 @@
   --color-graphite: #2b2b2b;
   --color-hairline: #b4b4ac;
   --color-hairline-soft: #d2d2cc;
-  --color-engrave: #8a8a84;
+  /*
+   * Engrave is text, so it has to be readable text. At #8a8a84 it measured
+   * 2.7:1 against the tile — every small label in the app failed WCAG AA,
+   * which asks 4.5:1. This is the lightest grey that passes, and it is a
+   * tuner read at arm's length with an instrument in your hands, so the
+   * margin matters more here than the softness did.
+   */
+  --color-engrave: #656560;
 
   /* The single accent. Used only for live state and out-of-tune. */
   --color-signal: #ff3b30;
@@ -54,9 +105,11 @@
     'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
 
-  /* Keycap geometry. */
-  --radius-cap: 10px;
-  --radius-module: 14px;
+  /* Keycap geometry. Squared off, the way a machined cap actually is: the
+     corner is broken so it is not sharp to the touch, not rounded into a
+     pill. */
+  --radius-cap: 4px;
+  --radius-module: 4px;
 }
 
 html {
@@ -142,15 +195,15 @@ body {
  * press. No drop shadows anywhere.
  */
 @utility keycap {
-  /* A machined cap catches light along its top edge and falls away below. */
+  /*
+   * Flat. There was a lit top edge and a gradient here, borrowed from moulded
+   * plastic; on a cap that is switched on — dark ground, near-white label — it
+   * read as a white stripe across the top rather than as light. A cap is now a
+   * surface and a hairline, which is what the rest of the panel already is.
+   */
   background-color: var(--color-panel);
-  background-image: linear-gradient(180deg, #ffffff 0%, var(--color-panel) 45%, #f1f1ed 100%);
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-cap);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    inset 0 -1px 0 rgb(43 43 43 / 0.04),
-    0 1px 1.5px rgb(43 43 43 / 0.07);
   transition:
     transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
     border-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
@@ -160,6 +213,28 @@ body {
 
 @utility keycap-pressable {
   cursor: pointer;
+  position: relative;
+}
+
+/*
+ * A finger needs 44px; this panel does not have 44px to give. So on a touch
+ * device the *target* grows and the cap does not: an invisible pad centred on
+ * the cap brings the tappable area up to size without costing a pixel of
+ * layout. Pointer devices skip it — a mouse hits a 24px cap fine, and the pad
+ * would only make neighbouring caps fight over the cursor.
+ */
+@media (pointer: coarse) {
+  .keycap-pressable::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
 }
 
 @utility keycap-pressable--hover {
@@ -185,7 +260,7 @@ body {
 
 /* On a phone the same labels have to give up a little more. Both queries, for
    the same reason the `short` variant needs both. */
-@media (max-height: 520px), (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
+@media (max-height: 600px), (orientation: portrait) and (pointer: coarse) and (max-width: 520px) {
   .mono-label {
     font-size: 9px;
     letter-spacing: 0.1em;

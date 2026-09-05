@@ -33,7 +33,7 @@ export function PitchMeter({ cents, tolerance }: PitchMeterProps) {
           &#9837;
         </span>
 
-        <div className="relative h-11 min-w-0 flex-1 overflow-hidden rounded-md border border-hairline bg-panel short:h-7">
+        <div className="relative h-11 min-w-0 flex-1 overflow-hidden rounded-[4px] border border-hairline bg-panel short:h-7">
           {/* Ticks along both edges. */}
           {(['top-0', 'bottom-0'] as const).map((edge) => (
             <span

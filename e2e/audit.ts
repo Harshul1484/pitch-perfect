@@ -68,7 +68,12 @@ export async function audit(page: Page): Promise<Audit> {
       if (Number(style.opacity) === 0) continue;
 
       const rect = el.getBoundingClientRect();
-      if (rect.width < 1 && rect.height < 1) continue;
+      // A box of a pixel or less in both directions shows nothing. That is
+      // how sr-only text is hidden — clipped to 1x1 on purpose — and it would
+      // otherwise be reported as content that does not fit, which is true and
+      // entirely intended. A 1px hairline is taller than it is wide, so it is
+      // still measured.
+      if (rect.width <= 1 && rect.height <= 1) continue;
 
       if (
         rect.left < frame.left - 1 ||
@@ -99,7 +104,9 @@ export async function audit(page: Page): Promise<Audit> {
           detail: `${el.scrollWidth}px of content in ${el.clientWidth}px across`,
         });
       }
-      if (hidesY && el.scrollHeight > el.clientHeight + 1) {
+      // Truncation hides overflow on both axes, so a label that declares
+      // ellipsis is opting out of both checks, not only the one across.
+      if (hidesY && !truncates && el.scrollHeight > el.clientHeight + 1) {
         clipped.push({
           what: describe(el),
           detail: `${el.scrollHeight}px of content in ${el.clientHeight}px down`,

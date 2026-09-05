@@ -39,15 +39,23 @@ export function TunerColumn({
   const starting = status === 'starting';
   const inTune = match !== null && Math.abs(match.cents) <= tolerance;
 
-  const tone = match === null ? 'text-hairline' : inTune ? 'text-intune' : 'text-signal';
+  // Hairline is a border colour; as 40px text it measured 1.9:1, which is not
+  // text at all. Waiting for a note is a quiet state, not an invisible one.
+  const tone = match === null ? 'text-engrave' : inTune ? 'text-intune' : 'text-signal';
 
   return (
-    <div className="keycap relative flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 short:w-[126px] short:gap-1 short:p-1.5">
+    <div className="keycap relative flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px] short:gap-1 short:p-1.5">
+      {/*
+       * The note is the one thing you read with the instrument under your
+       * chin, so where the screen has height to spare it is set large. Growing
+       * the whole panel was tried first and was worse: it pushed the metronome
+       * off the bottom and left the readout adrift in an empty box.
+       */}
       <div className="flex flex-col gap-1.5 short:gap-1">
         <span className="mono-label">note</span>
 
         <span
-          className={`flex h-[46px] items-center text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 short:h-[28px] short:text-[24px] ${tone}`}
+          className={`flex h-[46px] items-center text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200 tall:h-[68px] tall:text-[60px] short:h-[28px] short:text-[24px] ${tone}`}
         >
           {match === null ? (
             '––'
@@ -66,10 +74,26 @@ export function TunerColumn({
               : `${frequency.toFixed(1)} hz`}
         </span>
 
-        {/* The reading in words, which the bar alone cannot give. */}
+        {/*
+         * The reading in words, which the bar alone cannot give — and, before
+         * there is a reading, what to do about it. This said "listening" while
+         * the microphone was shut, which was both untrue and the only place a
+         * first-time player might have been told how to start.
+         */}
         <span className={`font-mono text-[12px] tabular-nums short:text-[10px] ${tone}`}>
           {match === null
-            ? 'listening'
+            ? live
+              ? 'listening'
+              : starting
+                ? 'starting'
+                : /* The phone column is 126px wide, where the fuller sentence
+                     wraps to three lines and pushes the panel off the screen. */
+                  [
+                    'press listen',
+                    <span key="then" className="narrow:hidden">
+                      , then play
+                    </span>,
+                  ]
             : inTune
               ? 'in tune'
               : `${match.cents > 0 ? '+' : ''}${match.cents}¢ ${

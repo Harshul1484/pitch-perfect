@@ -42,7 +42,7 @@ export async function openWithTone(
         await audio.resume();
         const destination = audio.createMediaStreamDestination();
 
-        harmonics.forEach((amplitude, index) => {
+        const voices = harmonics.map((amplitude, index) => {
           const oscillator = audio.createOscillator();
           const gain = audio.createGain();
           oscillator.type = 'sine';
@@ -51,7 +51,15 @@ export async function openWithTone(
           oscillator.connect(gain);
           gain.connect(destination);
           oscillator.start();
+          return gain;
         });
+
+        // Stopping playing, on demand. Practice mode is about what the app
+        // remembers *after* a note ends, which cannot be tested while the note
+        // is still sounding.
+        (window as unknown as { silence: () => void }).silence = () => {
+          for (const gain of voices) gain.gain.value = 0;
+        };
 
         return destination.stream;
       };

@@ -52,8 +52,15 @@ export function SwaraKeyboard({
   onNewLine,
   onBackspace,
 }: SwaraKeyboardProps) {
+  /*
+   * The keys fill the width and cap their height. Square keys were tried both
+   * ways and neither worked: uncapped they became 125px monsters on a wide
+   * editor, and capping the keyboard left a third of the row empty. A fixed
+   * height keeps them a sane size, fills the space, and matches the row of
+   * actions underneath.
+   */
   return (
-    <div className="flex flex-col gap-2 short:gap-1">
+    <div className="flex w-full shrink-0 flex-col gap-2 short:gap-1">
       <div className="flex items-center justify-between">
         <span className="mono-label">{notation === 'western' ? 'notes' : 'swaras'}</span>
 
@@ -88,7 +95,7 @@ export function SwaraKeyboard({
                   ? `insert ${NOTE_NAMES[(tonic + degree) % 12]}`
                   : `insert ${swara.komal ? 'komal ' : ''}${swara.tivra ? 'tivra ' : ''}${swara.text}`
               }
-              className={`${KEY_OFF} flex aspect-square flex-col items-center justify-center gap-1 short:aspect-auto short:h-[34px] short:gap-0.5 ${
+              className={`${KEY_OFF} flex h-14 flex-col items-center justify-center gap-1 py-1.5 short:h-[34px] short:gap-0.5 short:py-1 ${
                 swara.komal || swara.tivra ? 'bg-cap-dark bg-none' : ''
               }`}
             >

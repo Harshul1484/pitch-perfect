@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { VOICES, type Voice } from '../lib/audio';
 import { TONICS } from '../lib/notation';
 import { Segmented } from './segmented';
-import { Knob } from './knob';
 
 interface ControlsPopoverProps {
   tolerance: number;
@@ -84,79 +83,168 @@ export function ControlsPopover(props: ControlsPopoverProps) {
         <div
           role="dialog"
           aria-label="controls"
-          className="keycap absolute right-0 top-[calc(100%+8px)] z-30 flex w-[248px] gap-4 bg-tile p-4"
+          className="keycap absolute right-0 top-[calc(100%+8px)] z-30 flex w-[248px] flex-col gap-3 bg-tile p-4"
         >
-          <div className="flex flex-1 flex-col gap-3">
-            <div className="flex gap-4">
-              <Knob
-                label="tolerance"
-                value={props.tolerance}
-                min={2}
-                max={30}
-                step={1}
-                onChange={props.onToleranceChange}
-                format={(cents) => `${cents}c`}
-              />
-              <Knob
-                label="sustain"
-                value={props.sustain}
-                min={2}
-                max={30}
-                step={1}
-                onChange={props.onSustainChange}
-                format={(tenths) => `${(tenths / 10).toFixed(1)}s`}
-              />
-            </div>
-
-            <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
-
-            <Segmented
-              label="voice"
-              value={props.voice}
-              options={VOICES}
-              onChange={props.onVoiceChange}
-            />
-
-            <label className="flex items-center justify-between gap-2">
-              <span className="mono-label">tonic</span>
-              <select
-                value={props.tonic}
-                onChange={(event) => props.onTonicChange(Number(event.target.value))}
-                aria-label="tonic"
-                className="keycap keycap-pressable w-[86px] cursor-pointer appearance-none py-1.5 pl-2.5 pr-5 text-center font-mono text-[11px] tabular-nums text-graphite hover:border-engrave"
-                style={{
-                  backgroundImage: SELECT_ARROW,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 6px center',
-                }}
-              >
-                {TONICS.map((name, pitchClass) => (
-                  <option key={name} value={pitchClass}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              onClick={props.onDroneToggle}
-              aria-pressed={props.droneOn}
-              className={`${
-                props.droneOn ? KEY_ON : KEY_OFF
-              } flex h-9 w-full items-center justify-center gap-1.5 text-[12px] font-medium lowercase tracking-wide`}
-            >
-              <span
-                aria-hidden="true"
-                className={`h-1.5 w-1.5 rounded-[1px] ${
-                  props.droneOn ? 'bg-signal' : 'bg-hairline'
-                }`}
-              />
-              drone
-            </button>
-          </div>
+          <Controls {...props} />
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The same controls as a panel rather than a popover.
+ *
+ * On a screen tall enough to leave the readout column half empty, these belong
+ * in that space: a permanent panel is one fewer click than a popover, and a
+ * popover covers the key bed it is sitting over. On a shorter screen there is
+ * no space to put them in, and the button comes back — which is why both
+ * shapes exist rather than one replacing the other.
+ */
+export function ControlsPanel(props: ControlsPopoverProps) {
+  return (
+    <div
+      role="group"
+      aria-label="controls"
+      className="keycap flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px]"
+    >
+      <span className="mono-label">controls</span>
+      <Controls {...props} />
+    </div>
+  );
+}
+
+/** What both shapes show. */
+function Controls(props: ControlsPopoverProps) {
+  return (
+    <>
+      {/*
+       * Typed, not turned. These were knobs, which look like the panel
+       * they sit on but are a poor way to reach a particular number —
+       * you drag, overshoot, and drag back. Both of these are set to a
+       * value you already have in mind.
+       */}
+      <div className="flex gap-2">
+        <Field
+          label="tolerance"
+          unit="&cent;"
+          value={props.tolerance}
+          min={2}
+          max={30}
+          step={1}
+          onChange={props.onToleranceChange}
+        />
+        <Field
+          label="sustain"
+          unit="s"
+          /* Stored in tenths, entered in seconds. */
+          value={props.sustain / 10}
+          min={0.2}
+          max={3}
+          step={0.1}
+          onChange={(seconds) => props.onSustainChange(Math.round(seconds * 10))}
+        />
+      </div>
+
+      <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
+
+      <Segmented
+        label="voice"
+        value={props.voice}
+        options={VOICES}
+        onChange={props.onVoiceChange}
+      />
+
+      <label className="flex items-center justify-between gap-2">
+        <span className="mono-label">tonic</span>
+        <select
+          value={props.tonic}
+          onChange={(event) => props.onTonicChange(Number(event.target.value))}
+          aria-label="tonic"
+          className="keycap keycap-pressable w-[86px] cursor-pointer appearance-none py-1.5 pl-2.5 pr-5 text-center font-mono text-[11px] tabular-nums text-graphite hover:border-engrave"
+          style={{
+            backgroundImage: SELECT_ARROW,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 6px center',
+          }}
+        >
+          {TONICS.map((name, pitchClass) => (
+            <option key={name} value={pitchClass}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <button
+        type="button"
+        onClick={props.onDroneToggle}
+        aria-pressed={props.droneOn}
+        className={`${
+          props.droneOn ? KEY_ON : KEY_OFF
+        } flex h-9 w-full items-center justify-center gap-1.5 text-[12px] font-medium lowercase tracking-wide`}
+      >
+        <span
+          aria-hidden="true"
+          className={`h-1.5 w-1.5 rounded-[1px] ${
+            props.droneOn ? 'bg-signal' : 'bg-hairline'
+          }`}
+        />
+        drone
+      </button>
+    </>
+  );
+}
+
+/**
+ * One typed setting: a label, a number, and its unit.
+ *
+ * The value is clamped as it is typed, the same way the tempo field on the
+ * metronome behaves, so a setting can never be left outside the range it is
+ * allowed. A reading that is not a number at all — mid-way through typing
+ * "0.", say — is ignored rather than treated as zero.
+ */
+function Field({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-1 flex-col gap-1.5">
+      <span className="mono-label">{label}</span>
+      <span className="flex items-center gap-1">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)));
+          }}
+          aria-label={label}
+          className="keycap w-full min-w-0 bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
+        />
+        <span
+          aria-hidden="true"
+          className="font-mono text-[11px] leading-none text-engrave"
+        >
+          {unit}
+        </span>
+      </span>
+    </label>
   );
 }

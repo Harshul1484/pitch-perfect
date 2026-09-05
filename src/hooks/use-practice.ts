@@ -1,0 +1,132 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PitchMatch } from '../lib/notes';
+import {
+  EMPTY,
+  HOLDS,
+  expire,
+  nextExpiry,
+  observe,
+  type Mark,
+  type PracticeState,
+} from '../lib/practice';
+import { usePreference } from './use-preference';
+
+const HOLD_LABELS = HOLDS.map((option) => option.label);
+
+/**
+ * How long marks stay, remembered between sessions.
+ *
+ * Stored by label rather than by number, because "no fade" is one of the
+ * choices and there is no number that means it — `useNumberPreference` would
+ * have to encode absence as a magic value.
+ */
+export function useHoldPreference(): [number | null, (ms: number | null) => void] {
+  const [label, setLabel] = usePreference('pitch.hold', '30s', HOLD_LABELS);
+
+  const set = useCallback(
+    (ms: number | null) => {
+      const chosen = HOLDS.find((option) => option.ms === ms);
+      if (chosen) setLabel(chosen.label);
+    },
+    [setLabel],
+  );
+
+  return [HOLDS.find((option) => option.label === label)?.ms ?? null, set];
+}
+
+/** One shared empty map, so a switched-off hook returns a stable object. */
+const NOTHING: Record<number, Mark> = {};
+
+export interface Practice {
+  /** The latest attempt at each pitch, by midi number. */
+  marks: Record<number, Mark>;
+  reset: () => void;
+}
+
+/**
+ * Remember how each note was played.
+ *
+ * The accumulating state lives in a ref and only the marks are mirrored into
+ * React state, because the detector reports about sixty times a second and the
+ * bed only needs re-rendering when what it is showing actually changed.
+ *
+ * Fading is one scheduled timeout rather than a tick: most of the time nothing
+ * is due, and on "no fade" nothing ever is.
+ */
+export function usePractice(
+  match: PitchMatch | null,
+  tolerance: number,
+  holdMs: number | null,
+  enabled: boolean,
+  /**
+   * Called once for each attempt, as it starts to count. A callback rather
+   * than a returned value: an attempt is an event, and a caller folding events
+   * into state would have to do it from an effect, which is the shape that
+   * causes cascading renders.
+   */
+  onAttempt?: (mark: Mark) => void,
+): Practice {
+  const state = useRef<PracticeState>(EMPTY);
+  const [marks, setMarks] = useState<Record<number, Mark>>({});
+
+  // Held in a ref so a caller can pass an inline function without restarting
+  // the reading effect sixty times a second.
+  const report = useRef(onAttempt);
+  useEffect(() => {
+    report.current = onAttempt;
+  }, [onAttempt]);
+
+  // Take each reading as it arrives. This is accumulation over a stream, not
+  // state derived from props: what the bed shows depends on every reading so
+  // far, so there is nothing to compute during render instead.
+  useEffect(() => {
+    if (!enabled || match === null) return;
+
+    const step = observe(
+      state.current,
+      { at: performance.now(), midi: match.note.midi, cents: match.cents },
+      tolerance,
+    );
+
+    state.current = step.state;
+    setMarks(step.state.marks);
+    if (step.committed) report.current?.(step.committed);
+  }, [match, enabled, tolerance]);
+
+  // Switching off wipes the slate, so turning it back on starts a session
+  // rather than resuming one from an hour ago. The accumulator is a ref, so
+  // this is a write rather than a state change — there is nothing to render
+  // until the next reading arrives, and what is shown is derived below.
+  const wasEnabled = useRef(enabled);
+  useEffect(() => {
+    if (wasEnabled.current === enabled) return;
+
+    state.current = EMPTY;
+    wasEnabled.current = enabled;
+  }, [enabled]);
+
+  // One timeout, set for whenever the oldest mark falls due.
+  useEffect(() => {
+    const due = nextExpiry(state.current, holdMs);
+    if (due === null) return;
+
+    const timer = window.setTimeout(
+      () => {
+        state.current = expire(state.current, performance.now(), holdMs);
+        setMarks(state.current.marks);
+      },
+      Math.max(0, due - performance.now()),
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [marks, holdMs]);
+
+  const reset = useCallback(() => {
+    state.current = EMPTY;
+    setMarks({});
+  }, []);
+
+  // Switched off shows nothing, derived rather than cleared: there is no state
+  // to reconcile, and no render where the bed still carries the last session.
+  return enabled ? { marks, reset } : { marks: NOTHING, reset };
+}

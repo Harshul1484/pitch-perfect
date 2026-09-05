@@ -19,7 +19,12 @@ export function Segmented<T extends string>({
 }: SegmentedProps<T>) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="mono-label">{label}</span>
+      {/*
+       * The label goes on a phone. The caps themselves read "western" and
+       * "sargam", so it is a heading for something already legible, and the
+       * group keeps its accessible name either way.
+       */}
+      <span className="mono-label narrow:hidden">{label}</span>
       <div role="group" aria-label={label} className="flex gap-1">
         {options.map((option) => {
           const active = option === value;
