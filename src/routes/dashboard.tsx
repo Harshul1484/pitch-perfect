@@ -8,6 +8,7 @@ import { useRecorder } from '../hooks/use-recorder';
 import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
+import { useHoldPreference, usePractice } from '../hooks/use-practice';
 import type { Notation } from '../lib/notation';
 import { AccountControl } from '../components/account-control';
 import { ControlsPopover } from '../components/controls-popover';
@@ -15,6 +16,7 @@ import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
 import { MAX_BPM, MIN_BPM } from '../lib/metronome';
 import { MetronomePanel } from '../components/metronome-panel';
+import { PracticeControl } from '../components/practice-control';
 import { RecordControl } from '../components/record-control';
 import { TunerColumn } from '../components/tuner-column';
 
@@ -59,6 +61,11 @@ export function Dashboard() {
 
   const recorder = useRecorder(match, tolerance);
 
+  // Practice: the bed keeps what it heard, rather than only showing it.
+  const [practising, setPractising] = useState(false);
+  const [holdMs, setHoldMs] = useHoldPreference();
+  const practice = usePractice(match, tolerance, holdMs, practising);
+
   useEffect(() => {
     return () => {
       if (flashTimer.current !== null) {
@@ -91,7 +98,7 @@ export function Dashboard() {
         <h1 className="text-[20px] font-semibold leading-none tracking-[-0.03em] short:text-[15px]">
           pitch
         </h1>
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-1">
           <Link
             to="/notes"
             className={
@@ -123,6 +130,14 @@ export function Dashboard() {
                   }
             }
             onDiscard={recorder.discard}
+          />
+          <PracticeControl
+            on={practising}
+            onToggle={() => setPractising((on) => !on)}
+            holdMs={holdMs}
+            onHoldChange={setHoldMs}
+            onReset={practice.reset}
+            marked={Object.keys(practice.marks).length}
           />
           <ControlsPopover
             tolerance={tolerance}
@@ -173,6 +188,7 @@ export function Dashboard() {
           detectedMidi={match?.note.midi ?? null}
           detectedCents={match?.cents ?? null}
           tolerance={tolerance}
+          marks={practice.marks}
         />
       </div>
     </div>

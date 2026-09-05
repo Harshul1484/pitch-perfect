@@ -2,12 +2,37 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PitchMatch } from '../lib/notes';
 import {
   EMPTY,
+  HOLDS,
   expire,
   nextExpiry,
   observe,
   type Mark,
   type PracticeState,
 } from '../lib/practice';
+import { usePreference } from './use-preference';
+
+const HOLD_LABELS = HOLDS.map((option) => option.label);
+
+/**
+ * How long marks stay, remembered between sessions.
+ *
+ * Stored by label rather than by number, because "no fade" is one of the
+ * choices and there is no number that means it — `useNumberPreference` would
+ * have to encode absence as a magic value.
+ */
+export function useHoldPreference(): [number | null, (ms: number | null) => void] {
+  const [label, setLabel] = usePreference('pitch.hold', '30s', HOLD_LABELS);
+
+  const set = useCallback(
+    (ms: number | null) => {
+      const chosen = HOLDS.find((option) => option.ms === ms);
+      if (chosen) setLabel(chosen.label);
+    },
+    [setLabel],
+  );
+
+  return [HOLDS.find((option) => option.label === label)?.ms ?? null, set];
+}
 
 /** One shared empty map, so a switched-off hook returns a stable object. */
 const NOTHING: Record<number, Mark> = {};
