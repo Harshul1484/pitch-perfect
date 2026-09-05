@@ -7,10 +7,12 @@ import {
   type Note,
 } from '../lib/notes';
 import { playFrequency } from '../lib/audio';
+import { useAuth } from '../hooks/use-auth';
 import { useDrone } from '../hooks/use-drone';
 import { useMetronome } from '../hooks/use-metronome';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
 import type { Notation } from '../lib/notation';
+import { AccountControl } from '../components/account-control';
 import { ControlRail } from '../components/control-rail';
 import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
@@ -37,6 +39,7 @@ export function Dashboard() {
   const metronome = useMetronome(bpm, volume / 100);
   // Sa in octave 3, a comfortable register to drone under a violin.
   const drone = useDrone(frequencyOf(tonic + 48), volume / 100);
+  const auth = useAuth();
 
   const match = useMemo(
     () => (reading ? nearestNote(reading.frequency) : null),
@@ -79,7 +82,11 @@ export function Dashboard() {
             tuning instrument · {ALL_NOTES.length} keys · a4 = 440 hz
           </p>
         </div>
-        <NotationSwitch notation={notation} onNotationChange={setNotation} />
+        <div className="flex items-center gap-4">
+          <NotationSwitch notation={notation} onNotationChange={setNotation} />
+          <span aria-hidden="true" className="h-4 w-px bg-hairline" />
+          <AccountControl {...auth} />
+        </div>
       </header>
 
       <div className="flex shrink-0 gap-2.5">
