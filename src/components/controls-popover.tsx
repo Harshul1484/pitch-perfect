@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { VOICES, type Voice } from '../lib/audio';
 import { NOTATIONS, TONICS, type Notation } from '../lib/notation';
 import { Segmented } from './segmented';
@@ -111,90 +111,115 @@ export function ControlsPanel(props: ControlsPopoverProps) {
       className="keycap flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px]"
     >
       <span className="mono-label">controls</span>
-      <Controls {...props} />
+      {/* Stacked here. This column is 170px wide, and a label beside a pair of
+          caps needs closer to 250 — "sargam" and "piano" were running off the
+          panel's right edge. */}
+      <Controls {...props} stacked />
     </div>
   );
 }
+
 /**
  * What both shapes show.
  *
- * One grid, two columns: every label in the first and every control in the
- * second, so they share a left edge. Before this each row invented its own
- * arrangement — labels above, labels beside, one pushed to the far right — and
- * nothing on the panel lined up with anything else.
+ * Wide enough, and it is one grid of two columns: every label in the first and
+ * every control in the second, so they share a left edge. Before this each row
+ * invented its own arrangement — labels above, labels beside, one pushed to
+ * the far right — and nothing lined up with anything else.
+ *
+ * In the narrow column the same rows stack, label above control. They still
+ * share a left edge, which is what the alignment was for; there simply is not
+ * room for two columns.
  */
-function Controls(props: ControlsPopoverProps) {
+function Controls({
+  stacked = false,
+  ...props
+}: ControlsPopoverProps & { stacked?: boolean }) {
   return (
     <>
-      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2.5">
+      <div
+        className={
+          stacked
+            ? 'flex flex-col gap-2.5'
+            : 'grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2.5'
+        }
+      >
         {/*
          * Typed, not turned. These were knobs, which look like the panel they
          * sit on but are a poor way to reach a particular number — you drag,
          * overshoot, and drag back. Both are set to a value you already have
          * in mind.
          */}
-        <span className="mono-label">tolerance</span>
-        <Field
-          label="tolerance"
-          unit="&cent;"
-          value={props.tolerance}
-          min={2}
-          max={30}
-          step={1}
-          onChange={props.onToleranceChange}
-        />
+        <Row stacked={stacked} label="tolerance">
+          <Field
+            label="tolerance"
+            unit="&cent;"
+            value={props.tolerance}
+            min={2}
+            max={30}
+            step={1}
+            onChange={props.onToleranceChange}
+          />
+        </Row>
 
-        <span className="mono-label">sustain</span>
-        <Field
-          label="sustain"
-          unit="s"
-          /* Stored in tenths, entered in seconds. */
-          value={props.sustain / 10}
-          min={0.2}
-          max={3}
-          step={0.1}
-          onChange={(seconds) => props.onSustainChange(Math.round(seconds * 10))}
-        />
+        <Row stacked={stacked} label="sustain">
+          <Field
+            label="sustain"
+            unit="s"
+            /* Stored in tenths, entered in seconds. */
+            value={props.sustain / 10}
+            min={0.2}
+            max={3}
+            step={0.1}
+            onChange={(seconds) => props.onSustainChange(Math.round(seconds * 10))}
+          />
+        </Row>
 
-        <span aria-hidden="true" className="col-span-2 h-px w-full bg-hairline-soft" />
+        <span
+          aria-hidden="true"
+          className={`h-px w-full bg-hairline-soft ${stacked ? '' : 'col-span-2'}`}
+        />
 
         {/* Notation belongs here, with the other things you set once. It held a
             permanent two-cap switch in a header full of controls you reach for
             while playing, which is not what it is. */}
-        <span className="mono-label">notation</span>
-        <Segmented
-          label="notation"
-          value={props.notation}
-          options={NOTATIONS}
-          onChange={props.onNotationChange}
-        />
+        <Row stacked={stacked} label="notation">
+          <Segmented
+            label="notation"
+            value={props.notation}
+            options={NOTATIONS}
+            onChange={props.onNotationChange}
+          />
+        </Row>
 
-        <span className="mono-label">voice</span>
-        <Segmented
-          label="voice"
-          value={props.voice}
-          options={VOICES}
-          onChange={props.onVoiceChange}
-        />
+        <Row stacked={stacked} label="voice">
+          <Segmented
+            label="voice"
+            value={props.voice}
+            options={VOICES}
+            onChange={props.onVoiceChange}
+          />
+        </Row>
 
-        <span className="mono-label">tonic</span>
-        <select
-          value={props.tonic}
-          onChange={(event) => props.onTonicChange(Number(event.target.value))}
-          aria-label="tonic"
-          className="keycap keycap-pressable w-[86px] cursor-pointer appearance-none py-1.5 pl-2.5 pr-5 text-center font-mono text-[11px] tabular-nums text-graphite hover:border-engrave"
-          style={{
-            backgroundImage: SELECT_ARROW,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 6px center',
-          }}
-        >
-          {TONICS.map((name, pitchClass) => (
-            <option key={name} value={pitchClass}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <Row stacked={stacked} label="tonic">
+          <select
+            value={props.tonic}
+            onChange={(event) => props.onTonicChange(Number(event.target.value))}
+            aria-label="tonic"
+            className="keycap keycap-pressable w-[86px] cursor-pointer appearance-none py-1.5 pl-2.5 pr-5 text-center font-mono text-[11px] tabular-nums text-graphite hover:border-engrave"
+            style={{
+              backgroundImage: SELECT_ARROW,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 6px center',
+            }}
+          >
+            {TONICS.map((name, pitchClass) => (
+              <option key={name} value={pitchClass}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </Row>
       </div>
 
       {/* An action rather than a setting, so it sits below the rule and takes
@@ -218,6 +243,33 @@ function Controls(props: ControlsPopoverProps) {
         drone
       </button>
     </>
+  );
+}
+
+/** One labelled setting, beside its label or above it. */
+function Row({
+  stacked,
+  label,
+  children,
+}: {
+  stacked: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  if (!stacked) {
+    return (
+      <>
+        <span className="mono-label">{label}</span>
+        {children}
+      </>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="mono-label">{label}</span>
+      {children}
+    </div>
   );
 }
 

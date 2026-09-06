@@ -44,14 +44,14 @@ export function TunerColumn({
   const tone = match === null ? 'text-engrave' : inTune ? 'text-intune' : 'text-signal';
 
   return (
-    <div className="keycap relative flex w-[170px] shrink-0 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px] short:gap-1 short:p-1.5">
+    <div className="keycap relative flex min-h-0 w-[170px] shrink-0 flex-1 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px] short:gap-1 short:p-1.5">
       {/*
        * The note is the one thing you read with the instrument under your
        * chin, so where the screen has height to spare it is set large. Growing
        * the whole panel was tried first and was worse: it pushed the metronome
        * off the bottom and left the readout adrift in an empty box.
        */}
-      <div className="flex flex-col gap-1.5 short:gap-1">
+      <div className="flex shrink-0 flex-col gap-1.5 short:gap-1">
         <span className="mono-label">note</span>
 
         <span
@@ -107,7 +107,11 @@ export function TunerColumn({
        * on a phone the message needs the room the meter would take. Everywhere
        * else there is space for both, so both stay.
        */}
-      <div className={error === null ? 'contents' : 'contents short:hidden'}>
+      <div
+        className={`flex min-h-0 flex-1 flex-col justify-center gap-3 short:gap-1 ${
+          error === null ? '' : 'short:hidden'
+        }`}
+      >
         <span aria-hidden="true" className="h-px w-full shrink-0 bg-hairline-soft" />
 
         <PitchMeter cents={match?.cents ?? null} tolerance={tolerance} />

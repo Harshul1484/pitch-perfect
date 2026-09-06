@@ -67,7 +67,7 @@ export function Dashboard() {
    * hidden: a display:none copy is still in the document, and two controls
    * answering to one name is a bug for a screen reader and a test alike.
    */
-  const roomy = useMedia('(min-height: 880px)');
+  const roomy = useMedia('(min-height: 900px)');
 
   // Practice: the bed keeps what it heard, rather than only showing it.
   const [practising, setPractising] = useState(false);
@@ -111,7 +111,6 @@ export function Dashboard() {
          * what, which is a job the layout should have done.
          */}
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-2">
-
           {/* The two things you reach for while playing, kept together. */}
           <span className="flex items-center gap-1.5 short:gap-1">
             <RecordControl
@@ -146,22 +145,24 @@ export function Dashboard() {
             />
           </span>
 
-          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           {!roomy && (
-            <ControlsPopover
-              notation={notation}
-              onNotationChange={setNotation}
-              tolerance={tolerance}
-              onToleranceChange={setTolerance}
-              sustain={sustain}
-              onSustainChange={setSustain}
-              tonic={tonic}
-              onTonicChange={setTonic}
-              droneOn={drone.isOn}
-              onDroneToggle={drone.toggle}
-              voice={voice}
-              onVoiceChange={setVoice}
-            />
+            <>
+              <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
+              <ControlsPopover
+                notation={notation}
+                onNotationChange={setNotation}
+                tolerance={tolerance}
+                onToleranceChange={setTolerance}
+                sustain={sustain}
+                onSustainChange={setSustain}
+                tonic={tonic}
+                onTonicChange={setTonic}
+                droneOn={drone.isOn}
+                onDroneToggle={drone.toggle}
+                voice={voice}
+                onVoiceChange={setVoice}
+              />
+            </>
           )}
           <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           <AccountControl {...auth} />

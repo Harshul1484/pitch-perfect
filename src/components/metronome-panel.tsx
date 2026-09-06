@@ -94,7 +94,6 @@ export function MetronomePanel({
           </button>
         </div>
       </div>
-
     </div>
   );
 }

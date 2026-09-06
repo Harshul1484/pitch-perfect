@@ -27,13 +27,13 @@ export function PitchMeter({ cents, tolerance }: PitchMeterProps) {
   const bandWidth = (tolerance / RANGE) * 100;
 
   return (
-    <div className="flex w-full flex-col gap-1">
-      <div className="flex items-center gap-1.5">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-1">
+      <div className="flex min-h-0 flex-1 items-center gap-1.5">
         <span aria-hidden="true" className="text-[12px] leading-none text-engrave">
           &#9837;
         </span>
 
-        <div className="relative h-11 min-w-0 flex-1 overflow-hidden rounded-[4px] border border-hairline bg-panel short:h-7">
+        <div className="relative h-full max-h-[180px] min-h-[44px] min-w-0 flex-1 overflow-hidden rounded-[4px] border border-hairline bg-panel short:min-h-[28px]">
           {/* Ticks along both edges. */}
           {(['top-0', 'bottom-0'] as const).map((edge) => (
             <span
@@ -82,7 +82,7 @@ export function PitchMeter({ cents, tolerance }: PitchMeterProps) {
         </span>
       </div>
 
-      <div className="flex items-center justify-between px-3">
+      <div className="flex shrink-0 items-center justify-between px-3">
         <span className="mono-label">&minus;{tolerance}</span>
         <span
           className={`font-mono text-[10px] leading-3 tabular-nums ${
