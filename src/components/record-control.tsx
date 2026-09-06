@@ -86,7 +86,7 @@ export function RecordControl({
         disabled={disabled}
         aria-pressed={isRecording}
         title={disabled ? 'Start listening first' : undefined}
-        className={`keycap keycap-pressable flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] hover:border-engrave active:keycap-pressed disabled:cursor-not-allowed disabled:opacity-45 ${
+        className={`keycap keycap-pressable flex h-7 items-center gap-1.5 px-2.5 font-mono text-[10px] lowercase tracking-[0.08em] hover:border-engrave short:h-6 short:px-2 active:keycap-pressed disabled:cursor-not-allowed disabled:opacity-45 ${
           isRecording
             ? 'border-graphite bg-graphite bg-none text-panel hover:bg-graphite'
             : 'text-graphite hover:bg-white'

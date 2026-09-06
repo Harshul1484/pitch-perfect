@@ -1,4 +1,4 @@
-import { chromium, expect, test } from '@playwright/test';
+import { chromium, expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BASE_URL } from '../playwright.config';
@@ -18,13 +18,26 @@ async function openApp(name: string) {
   return { context, page };
 }
 
+/** Notation moved into the controls, so reaching it means opening them. */
+async function chooseNotation(page: Page, notation: 'western' | 'sargam') {
+  const controls = page.getByRole('button', { name: 'controls' });
+  if (await controls.isVisible()) await controls.click();
+
+  await page
+    .getByRole('group', { name: 'notation' })
+    .getByRole('button', { name: notation, exact: true })
+    .click();
+
+  if (await controls.isVisible()) await page.keyboard.press('Escape');
+}
+
 test('switches between Western and sargam naming', async () => {
   const { context, page } = await openApp('notation');
 
   // Western by default.
   await expect(page.getByRole('button', { name: /^Play C4,/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'sargam' }).click();
+  await chooseNotation(page, 'sargam');
 
   // With Sa on C, middle C is Sa and F sharp is tivra Ma.
   await expect(page.getByRole('button', { name: /^Play Sa, C4,/ })).toBeVisible();
@@ -33,7 +46,7 @@ test('switches between Western and sargam naming', async () => {
   ).toBeVisible();
   await expect(page.getByRole('button', { name: /^Play komal Re, C♯4,/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'western' }).click();
+  await chooseNotation(page, 'western');
   await expect(page.getByRole('button', { name: /^Play C4,/ })).toBeVisible();
 
   await context.close();
@@ -42,7 +55,7 @@ test('switches between Western and sargam naming', async () => {
 test('moving Sa renames every key', async () => {
   const { context, page } = await openApp('notation-tonic');
 
-  await page.getByRole('button', { name: 'sargam' }).click();
+  await chooseNotation(page, 'sargam');
   // Sa on D, the scordatura case that motivated a movable tonic. The tonic
   // lives in the controls popover now.
   await page.getByRole('button', { name: 'controls' }).click();

@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
 import { useAuth } from '../hooks/use-auth';
 import { useCompositions } from '../hooks/use-compositions';
 import { AccountControl, GoogleMark } from '../components/account-control';
 import { NotationEditor } from '../components/notation-editor';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
 import { Mark } from '../components/mark';
+import { Pages } from '../components/pages';
 import { nearestNote } from '../lib/notes';
 
 /*
@@ -54,7 +54,7 @@ export function Notes() {
     // No account control in the header here: the page below is the one place
     // to sign in, and two ways in would be a coin toss.
     return (
-      <Shell titled={false}>
+      <Shell>
         <SignIn {...auth} />
       </Shell>
     );
@@ -118,12 +118,81 @@ export function Notes() {
             }}
           />
         ) : (
-          <div className="keycap flex min-h-0 min-w-0 flex-1 items-start bg-tile p-3">
-            <p className="mono-label">select a piece, or make a new one</p>
-          </div>
+          <EmptyState
+            ready={store.status === 'ready'}
+            hasPieces={store.items.length > 0}
+            onCreate={() => void createPiece()}
+          />
         )}
       </div>
     </Shell>
+  );
+}
+
+/**
+ * The editor pane before a piece is open.
+ *
+ * This was one line of grey text in the top-left corner of a pane the size of
+ * the screen: it told you the pane was empty, which you could already see, and
+ * left the rest of it doing nothing. It is also the first thing a new player
+ * meets after signing in, so it now does an empty state's actual job — says
+ * what the page is for, offers the one action worth taking, and names the
+ * three things a piece can do once it exists.
+ */
+function EmptyState({
+  ready,
+  hasPieces,
+  onCreate,
+}: {
+  ready: boolean;
+  hasPieces: boolean;
+  onCreate: () => void;
+}) {
+  // Nothing is claimed about the library until it has actually loaded —
+  // otherwise a returning player is told to write their first piece.
+  const first = ready && !hasPieces;
+
+  return (
+    <div className="keycap flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-tile p-6 text-center short:gap-3 short:p-3">
+      <Mark size="lg" />
+
+      <div className="flex flex-col items-center gap-2.5 short:gap-1.5">
+        <h2 className="font-mono text-[16px] font-semibold leading-none tracking-[-0.01em] short:text-[13px]">
+          {first ? 'Write your first piece' : 'No piece open'}
+        </h2>
+
+        <p className="max-w-[58ch] font-mono text-[12px] leading-[1.7] text-graphite/80 short:text-[10px] short:leading-[1.5]">
+          {ready && hasPieces
+            ? 'Pick one from the list on the left, or start something new.'
+            : 'Type a phrase in sargam or Western letters, hear it played back, then practise against it a note at a time.'}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onCreate}
+        className={`${KEY_OFF} px-4 py-2 font-mono text-[12px] font-medium lowercase tracking-[0.08em]`}
+      >
+        new piece
+      </button>
+
+      {/* Three columns rather than a paragraph: what the page does, in the
+          order you do it. Hidden where the pane is too short to spare rows. */}
+      <div className="hidden w-full max-w-[520px] grid-cols-3 gap-4 border-t border-hairline-soft pt-5 tall:grid">
+        {[
+          ['write', 'in sargam or Western letters'],
+          ['hear', 'played back on violin or piano'],
+          ['practise', 'note by note, then a timed run'],
+        ].map(([label, blurb]) => (
+          <span key={label} className="flex flex-col items-center gap-1.5">
+            <span className="mono-label">{label}</span>
+            <span className="max-w-[22ch] font-mono text-[11px] leading-[1.6] text-engrave">
+              {blurb}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -179,37 +248,19 @@ function Shell({
   auth,
   listening,
   onListen,
-  titled = true,
 }: {
   children: ReactNode;
   auth?: ReturnType<typeof useAuth>;
   listening?: boolean;
   onListen?: () => void;
-  /** The signed-out page carries its own heading, centred. */
-  titled?: boolean;
 }) {
   return (
     <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-0.5">
-        <div className="flex items-center gap-3">
-          {titled && (
-            /* The same heading as the tuner: mark, then the word. The word is
-               the section here rather than the product, because the page is
-               reached from one and goes back to it. */
-            <h1 className="flex shrink-0 items-center gap-2 text-[18px] font-semibold leading-none tracking-[-0.02em] short:gap-1.5 short:text-[14px]">
-              <Mark />
-              notes
-            </h1>
-          )}
-          <Link
-            to="/"
-            className={
-              'keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed short:px-2 short:py-1 short:text-[9px]'
-            }
-          >
-            &larr; home
-          </Link>
-        </div>
+        {/* The same two tabs as the tuner, so the app has one navigation
+            rather than a link out and a link back. */}
+        <Pages />
+
         <div className="flex items-center gap-2 short:gap-1.5">
           {onListen && (
             <button
@@ -218,7 +269,7 @@ function Shell({
               aria-pressed={listening}
               className={`${
                 listening ? KEY_ON : KEY_OFF
-              } flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] short:px-2 short:py-1 short:text-[9px]`}
+              } flex h-7 items-center gap-1.5 px-2.5 font-mono text-[10px] lowercase tracking-[0.08em] short:h-6 short:px-2 short:text-[9px]`}
             >
               <span
                 aria-hidden="true"

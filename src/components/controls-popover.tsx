@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { VOICES, type Voice } from '../lib/audio';
-import { TONICS } from '../lib/notation';
+import { NOTATIONS, TONICS, type Notation } from '../lib/notation';
 import { Segmented } from './segmented';
 
 interface ControlsPopoverProps {
+  notation: Notation;
+  onNotationChange: (notation: Notation) => void;
   tolerance: number;
   onToleranceChange: (value: number) => void;
   sustain: number;
@@ -66,7 +68,7 @@ export function ControlsPopover(props: ControlsPopoverProps) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`${KEY_OFF} flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] ${
+        className={`${KEY_OFF} flex h-7 items-center gap-1.5 px-2.5 font-mono text-[10px] lowercase tracking-[0.08em] short:h-6 short:px-2 ${
           props.droneOn ? 'text-graphite' : 'text-engrave'
         }`}
       >
@@ -113,18 +115,25 @@ export function ControlsPanel(props: ControlsPopoverProps) {
     </div>
   );
 }
-
-/** What both shapes show. */
+/**
+ * What both shapes show.
+ *
+ * One grid, two columns: every label in the first and every control in the
+ * second, so they share a left edge. Before this each row invented its own
+ * arrangement — labels above, labels beside, one pushed to the far right — and
+ * nothing on the panel lined up with anything else.
+ */
 function Controls(props: ControlsPopoverProps) {
   return (
     <>
-      {/*
-       * Typed, not turned. These were knobs, which look like the panel
-       * they sit on but are a poor way to reach a particular number —
-       * you drag, overshoot, and drag back. Both of these are set to a
-       * value you already have in mind.
-       */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2.5">
+        {/*
+         * Typed, not turned. These were knobs, which look like the panel they
+         * sit on but are a poor way to reach a particular number — you drag,
+         * overshoot, and drag back. Both are set to a value you already have
+         * in mind.
+         */}
+        <span className="mono-label">tolerance</span>
         <Field
           label="tolerance"
           unit="&cent;"
@@ -134,6 +143,8 @@ function Controls(props: ControlsPopoverProps) {
           step={1}
           onChange={props.onToleranceChange}
         />
+
+        <span className="mono-label">sustain</span>
         <Field
           label="sustain"
           unit="s"
@@ -144,18 +155,28 @@ function Controls(props: ControlsPopoverProps) {
           step={0.1}
           onChange={(seconds) => props.onSustainChange(Math.round(seconds * 10))}
         />
-      </div>
 
-      <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
+        <span aria-hidden="true" className="col-span-2 h-px w-full bg-hairline-soft" />
 
-      <Segmented
-        label="voice"
-        value={props.voice}
-        options={VOICES}
-        onChange={props.onVoiceChange}
-      />
+        {/* Notation belongs here, with the other things you set once. It held a
+            permanent two-cap switch in a header full of controls you reach for
+            while playing, which is not what it is. */}
+        <span className="mono-label">notation</span>
+        <Segmented
+          label="notation"
+          value={props.notation}
+          options={NOTATIONS}
+          onChange={props.onNotationChange}
+        />
 
-      <label className="flex items-center justify-between gap-2">
+        <span className="mono-label">voice</span>
+        <Segmented
+          label="voice"
+          value={props.voice}
+          options={VOICES}
+          onChange={props.onVoiceChange}
+        />
+
         <span className="mono-label">tonic</span>
         <select
           value={props.tonic}
@@ -174,7 +195,11 @@ function Controls(props: ControlsPopoverProps) {
             </option>
           ))}
         </select>
-      </label>
+      </div>
+
+      {/* An action rather than a setting, so it sits below the rule and takes
+          the width instead of pretending to be another row of the grid. */}
+      <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
 
       <button
         type="button"
@@ -197,7 +222,8 @@ function Controls(props: ControlsPopoverProps) {
 }
 
 /**
- * One typed setting: a label, a number, and its unit.
+ * One typed setting: a number and its unit. The grid draws the label, so this
+ * only names itself for assistive technology.
  *
  * The value is clamped as it is typed, the same way the tempo field on the
  * metronome behaves, so a setting can never be left outside the range it is
@@ -222,29 +248,26 @@ function Field({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="flex flex-1 flex-col gap-1.5">
-      <span className="mono-label">{label}</span>
-      <span className="flex items-center gap-1">
-        <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)));
-          }}
-          aria-label={label}
-          className="keycap w-full min-w-0 bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
-        />
-        <span
-          aria-hidden="true"
-          className="font-mono text-[11px] leading-none text-engrave"
-        >
-          {unit}
-        </span>
+    <span className="flex items-center gap-1.5">
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)));
+        }}
+        aria-label={label}
+        className="keycap w-[70px] bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
+      />
+      <span
+        aria-hidden="true"
+        className="font-mono text-[11px] leading-none text-engrave"
+      >
+        {unit}
       </span>
-    </label>
+    </span>
   );
 }

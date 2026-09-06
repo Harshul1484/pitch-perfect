@@ -61,32 +61,43 @@ export function PracticeControl({
   }, [open]);
 
   return (
-    <div ref={container} className="relative flex items-stretch gap-1 short:gap-0.5">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={on}
-        className={`${
-          on ? KEY_ON : KEY_OFF
-        } flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] short:px-2 short:py-1 short:text-[9px]`}
-      >
-        <span
-          aria-hidden="true"
-          className={`h-1.5 w-1.5 rounded-[1px] ${on ? 'bg-signal' : 'bg-hairline'}`}
-        />
-        practice
-      </button>
+    <div ref={container} className="relative">
+      {/*
+       * One control, not two. The switch and its caret used to be separate
+       * caps with a gap between them, which read as a stray sliver parked
+       * beside a button rather than as the button's own menu. They now share
+       * a single outline with a hairline between the halves — the same shape
+       * the account control has, which is also a label with a caret.
+       */}
+      <div className="keycap flex h-7 items-stretch hover:border-engrave short:h-6">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-pressed={on}
+          className={`keycap-pressable flex items-center gap-1.5 rounded-l-[3px] px-2.5 font-mono text-[10px] lowercase tracking-[0.08em] active:keycap-pressed-flat short:px-2 short:text-[9px] ${
+            on ? 'bg-graphite text-panel' : 'hover:bg-white'
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`h-1.5 w-1.5 rounded-[1px] ${on ? 'bg-signal' : 'bg-hairline'}`}
+          />
+          practice
+        </button>
 
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label="practice settings"
-        className={`${KEY_OFF} flex items-center px-1.5 font-mono text-[10px] leading-none text-engrave short:px-1`}
-      >
-        &#9662;
-      </button>
+        <span aria-hidden="true" className="w-px shrink-0 bg-hairline" />
+
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label="practice settings"
+          className="keycap-pressable flex items-center rounded-r-[3px] px-1.5 font-mono text-[10px] leading-none text-engrave hover:bg-white active:keycap-pressed-flat short:px-1"
+        >
+          &#9662;
+        </button>
+      </div>
 
       {open && (
         <div

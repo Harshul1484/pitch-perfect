@@ -95,16 +95,16 @@ export function SwaraKeyboard({
                   ? `insert ${NOTE_NAMES[(tonic + degree) % 12]}`
                   : `insert ${swara.komal ? 'komal ' : ''}${swara.tivra ? 'tivra ' : ''}${swara.text}`
               }
-              className={`${KEY_OFF} flex h-14 flex-col items-center justify-center gap-1 py-1.5 short:h-[34px] short:gap-0.5 short:py-1 ${
+              className={`${KEY_OFF} flex h-[66px] flex-col items-center justify-center gap-1.5 py-2.5 short:h-[38px] short:gap-0.5 short:py-1 ${
                 swara.komal || swara.tivra ? 'bg-cap-dark bg-none' : ''
               }`}
             >
               {notation === 'western' ? (
-                <span className="text-[13px] font-medium leading-none">
+                <span className="text-[15px] font-medium leading-none">
                   {NOTE_NAMES[(tonic + degree) % 12]}
                 </span>
               ) : (
-                <Swara swara={swara} className="text-[13px] font-medium" />
+                <Swara swara={swara} className="text-[15px] font-medium" />
               )}
               <span className="font-mono text-[9px] leading-none text-engrave">
                 {letter}
@@ -122,35 +122,35 @@ export function SwaraKeyboard({
           title="Join the next note to the beat before it"
           className={`${
             tie ? KEY_ON : KEY_OFF
-          } flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          } flex-1 py-2 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           tie &#8635;
         </button>
         <button
           type="button"
           onClick={onBar}
-          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-2 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           bar |
         </button>
         <button
           type="button"
           onClick={onSustain}
-          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-2 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           hold &mdash;
         </button>
         <button
           type="button"
           onClick={onNewLine}
-          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-2 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           new line
         </button>
         <button
           type="button"
           onClick={onBackspace}
-          className={`${KEY_OFF} flex-1 py-1.5 font-mono text-[11px] lowercase tracking-[0.08em]`}
+          className={`${KEY_OFF} flex-1 py-2 font-mono text-[11px] lowercase tracking-[0.08em]`}
         >
           backspace
         </button>

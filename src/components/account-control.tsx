@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { AuthState } from '../hooks/use-auth';
 
 /** First initial, for the avatar when Google gives us no photo. */
@@ -21,13 +22,45 @@ function shortNameOf(name: string | null, email: string | null): string | null {
   return first.length <= 12 ? first : null;
 }
 
+/* Hover lives on the off state only — see the note in routes/notes.tsx. */
+const KEY = 'keycap keycap-pressable active:keycap-pressed';
+const KEY_OFF = `${KEY} hover:border-engrave hover:bg-white`;
+
 /**
  * Sign in with Google, and who is signed in.
  *
  * Renders nothing when Firebase is not configured — an inert sign-in button
  * would be worse than no button.
+ *
+ * Signed in, this is one control rather than two. Signing out is a rare act
+ * that was holding a permanent cap in a header full of things you reach for
+ * while playing; it now sits behind the avatar, where people already look for
+ * it. The avatar stays visible because whose account this is is worth knowing
+ * at a glance, and the name is worth a hundred pixels when there are pixels.
  */
 export function AccountControl({ status, user, error, signIn, signOut }: AuthState) {
+  const [open, setOpen] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+
+  // Close on an outside click or Escape, as any panel like this should.
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!container.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
   if (status === 'unavailable') return null;
 
   if (status === 'loading') {
@@ -35,48 +68,53 @@ export function AccountControl({ status, user, error, signIn, signOut }: AuthSta
   }
 
   if (status === 'signed-in' && user) {
+    const name = shortNameOf(user.displayName, user.email);
+
     return (
-      <div className="flex items-center gap-2 short:gap-1.5">
-        {/*
-         * Squared, like everything else on the panel. A circle was the one
-         * round thing left in a language made of caps and hairlines, and it
-         * read as something pasted on from another app. The whole identity is
-         * on the title, for the times the first name is not enough.
-         */}
-        <span
-          className="flex items-center gap-1.5"
-          title={user.displayName ?? user.email ?? undefined}
-        >
-          {user.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="h-5 w-5 rounded-[2px] border border-hairline object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="flex h-5 w-5 items-center justify-center rounded-[2px] border border-hairline bg-panel font-mono text-[10px] text-graphite"
-            >
-              {initialOf(user.displayName, user.email)}
-            </span>
-          )}
-
-          {shortNameOf(user.displayName, user.email) !== null && (
-            <span className="mono-label normal-case narrow:hidden">
-              {shortNameOf(user.displayName, user.email)}
-            </span>
-          )}
-        </span>
-
+      <div ref={container} className="relative">
         <button
           type="button"
-          onClick={signOut}
-          className="keycap keycap-pressable px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave hover:border-engrave hover:bg-white active:keycap-pressed short:px-2 short:py-1 short:text-[9px]"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          // A stable hook for tests, which cannot know what the account is
+          // called and should not have to open a menu to find out.
+          data-account=""
+          className={`${KEY_OFF} flex h-7 items-center gap-1.5 pl-1 pr-2 short:h-6 short:pr-1.5`}
         >
-          sign out
+          <Avatar user={user} />
+          {name !== null && (
+            <span className="mono-label normal-case narrow:hidden">{name}</span>
+          )}
+          <span aria-hidden="true" className="font-mono text-[9px] text-engrave">
+            &#9662;
+          </span>
         </button>
+
+        {open && (
+          <div
+            role="dialog"
+            aria-label="account"
+            className="keycap absolute right-0 top-[calc(100%+8px)] z-30 flex w-[220px] flex-col gap-2 bg-tile p-3"
+          >
+            <span className="text-[13px] leading-tight">
+              {user.displayName ?? 'Signed in'}
+            </span>
+            {user.email !== null && (
+              <span className="mono-label break-all normal-case">{user.email}</span>
+            )}
+
+            <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
+
+            <button
+              type="button"
+              onClick={signOut}
+              className={`${KEY_OFF} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
+            >
+              sign out
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -95,12 +133,39 @@ export function AccountControl({ status, user, error, signIn, signOut }: AuthSta
         type="button"
         onClick={signIn}
         disabled={busy}
-        className="keycap keycap-pressable flex items-center gap-2 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed disabled:cursor-wait"
+        className={`${KEY_OFF} flex items-center gap-2 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite disabled:cursor-wait`}
       >
         <GoogleMark />
         {busy ? 'signing in' : 'sign in'}
       </button>
     </div>
+  );
+}
+
+/**
+ * Squared, like everything else on the panel. A circle was the one round thing
+ * left in a language made of caps and hairlines, and it read as something
+ * pasted on from another app.
+ */
+function Avatar({ user }: { user: NonNullable<AuthState['user']> }) {
+  if (user.photoURL) {
+    return (
+      <img
+        src={user.photoURL}
+        alt=""
+        referrerPolicy="no-referrer"
+        className="h-5 w-5 rounded-[2px] border border-hairline object-cover"
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-5 w-5 items-center justify-center rounded-[2px] border border-hairline bg-panel font-mono text-[10px] text-graphite"
+    >
+      {initialOf(user.displayName, user.email)}
+    </span>
   );
 }
 

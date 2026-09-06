@@ -117,9 +117,7 @@ async function openSignedIn(
 
   await signIn.click();
 
-  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(page.locator('[data-account]')).toBeVisible({ timeout: 20_000 });
 
   return { context, page };
 }
@@ -137,9 +135,7 @@ async function renameNotes(page: Page, notation: 'western' | 'sargam', piece: st
     notation,
   );
   await page.reload();
-  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(page.locator('[data-account]')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: piece }).click();
 }
 
@@ -147,7 +143,7 @@ test('writes a phrase, saves it, and still has it after a reload', async () => {
   // Pin the naming, rather than depending on a remembered preference.
   const { context, page } = await openSignedIn('notes', undefined, undefined, 'sargam');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
 
   // Type the opening of the notebook phrase: Sa Re ma Pa, then hold.
@@ -167,9 +163,7 @@ test('writes a phrase, saves it, and still has it after a reload', async () => {
   });
 
   await page.reload();
-  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(page.locator('[data-account]')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Untitled' }).click();
 
   // Four swaras and a hold survived the round trip through Firestore.
@@ -182,7 +176,7 @@ test('writes a phrase, saves it, and still has it after a reload', async () => {
 test('renames a piece and lists it under the new title', async () => {
   const { context, page } = await openSignedIn('notes-rename');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
 
   const title = page.getByLabel('title');
   await title.fill('Bhairav alap');
@@ -197,7 +191,7 @@ test('renames a piece and lists it under the new title', async () => {
 test('deletes a piece', async () => {
   const { context, page } = await openSignedIn('notes-delete');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Untitled' })).toBeVisible();
 
   await page.getByRole('button', { name: 'delete' }).click();
@@ -213,7 +207,7 @@ test('deletes a piece', async () => {
 test('one user cannot see another user notes', async () => {
   // Two throwaway accounts, each in its own profile.
   const first = await openSignedIn('notes-user-a');
-  await first.page.getByRole('button', { name: 'new' }).click();
+  await first.page.getByRole('button', { name: 'new', exact: true }).click();
   await first.page.getByLabel('title').fill('Private to A');
   await expect(first.page.getByRole('button', { name: 'Private to A' })).toBeVisible({
     timeout: 15_000,
@@ -229,7 +223,7 @@ test('one user cannot see another user notes', async () => {
 test('corrects a note in the middle of a line, not just at the end', async () => {
   const { context, page } = await openSignedIn('notes-caret', undefined, undefined, 'sargam');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
@@ -253,7 +247,7 @@ test('corrects a note in the middle of a line, not just at the end', async () =>
 test('writes bar lines and ties', async () => {
   const { context, page } = await openSignedIn('notes-bars');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
@@ -271,9 +265,7 @@ test('writes bar lines and ties', async () => {
     timeout: 15_000,
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(page.locator('[data-account]')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Untitled' }).click();
 
   const reloaded = page.getByRole('group', { name: 'written notation' });
@@ -291,7 +283,7 @@ test('names the written notes in Western or sargam, on demand', async () => {
     'sargam',
   );
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   let written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
@@ -324,7 +316,7 @@ test('changing a piece tonic transposes it rather than rewriting it', async () =
     'western',
   );
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
   // Sa and Pa with Sa on C: C4 and G4.
@@ -356,7 +348,7 @@ test('changing a piece tonic transposes it rather than rewriting it', async () =
 test('undo steps back, and survives a reload', async () => {
   const { context, page } = await openSignedIn('notes-undo', undefined, undefined, 'sargam');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
@@ -375,9 +367,7 @@ test('undo steps back, and survives a reload', async () => {
     timeout: 15_000,
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'sign out' })).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(page.locator('[data-account]')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Untitled' }).click();
 
   // The trail came back with the piece rather than starting empty.
@@ -391,7 +381,7 @@ test('undo steps back, and survives a reload', async () => {
 test('drags across the page to select, then replaces the selection', async () => {
   const { context, page } = await openSignedIn('notes-drag', undefined, undefined, 'sargam');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
@@ -439,7 +429,7 @@ for (const screen of [
       screen.width < 800 ? 'sargam' : 'western',
     );
 
-    await page.getByRole('button', { name: 'new' }).click();
+    await page.getByRole('button', { name: 'new', exact: true }).click();
     const written = page.getByRole('group', { name: 'written notation' });
     await expect(written).toBeVisible();
 
@@ -463,7 +453,7 @@ for (const screen of [
 test('the caps that are on stay dark under the pointer', async () => {
   const { context, page } = await openSignedIn('notes-hover');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
 
   await expectStaysDark(
@@ -489,7 +479,7 @@ test('the caps that are on stay dark under the pointer', async () => {
 test('stopping playback silences what is already scheduled', async () => {
   const { context, page } = await openSignedIn('notes-stop');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
   for (const key of ['S', 'R', 'G', 'm']) await page.keyboard.press(key);
 
@@ -539,7 +529,7 @@ test('stopping playback silences what is already scheduled', async () => {
 test('practising a piece follows it note by note', async () => {
   const { context, page } = await openSignedIn('notes-practice', undefined, 261.63);
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 
@@ -579,7 +569,7 @@ test('practising a piece follows it note by note', async () => {
 test('the swara keyboard gives way to the bed while practising', async () => {
   const { context, page } = await openSignedIn('notes-practice-bed');
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
 
   await expect(page.getByRole('group', { name: 'saptak' })).toBeVisible();
@@ -602,7 +592,7 @@ test('the swara keyboard gives way to the bed while practising', async () => {
 test('a timed run counts in and then scores the piece', async () => {
   const { context, page } = await openSignedIn('notes-run', undefined, 261.63);
 
-  await page.getByRole('button', { name: 'new' }).click();
+  await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
   await expect(written).toBeVisible();
 

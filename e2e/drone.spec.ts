@@ -88,10 +88,12 @@ test('the tonic is reachable in Western notation too', async () => {
   const { context, page } = await openApp('drone-western');
 
   // It used to be hidden outside sargam, where it is also the drone's root.
-  await expect(page.getByRole('button', { name: 'western' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // openApp has already opened the popover; clicking again would shut it.
+  await expect(
+    page
+      .getByRole('group', { name: 'notation' })
+      .getByRole('button', { name: 'western', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('tonic')).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'controls' })).toBeVisible();
 

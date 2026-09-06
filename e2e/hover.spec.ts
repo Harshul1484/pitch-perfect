@@ -21,7 +21,11 @@ test('the notation switch keeps its selected cap dark under the pointer', async 
 }) => {
   await page.goto(BASE_URL);
 
-  const sargam = page.getByRole('button', { name: 'sargam', exact: true });
+  // Notation moved into the controls; the cap is the same cap.
+  await page.getByRole('button', { name: 'controls' }).click();
+  const sargam = page
+    .getByRole('group', { name: 'notation' })
+    .getByRole('button', { name: 'sargam', exact: true });
   await sargam.click();
 
   await expectStaysDark(sargam, 'the selected notation');
@@ -56,9 +60,12 @@ test('no cap carries both hover backgrounds at once', async ({ page }) => {
 
   // Turn everything on first. The conflicting class only appears on the on
   // state, so scanning a page of idle controls would find nothing and say so.
-  await page.getByRole('button', { name: 'sargam', exact: true }).click();
   await page.getByRole('button', { name: 'start', exact: true }).click();
   await page.getByRole('button', { name: 'controls' }).click();
+  await page
+    .getByRole('group', { name: 'notation' })
+    .getByRole('button', { name: 'sargam', exact: true })
+    .click();
   await page.getByRole('button', { name: 'drone' }).click();
 
   const offenders = await page.evaluate(() =>

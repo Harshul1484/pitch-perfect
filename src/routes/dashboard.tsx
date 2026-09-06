@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
 import { IN_TUNE_CENTS, frequencyOf, nearestNote, type Note } from '../lib/notes';
 import { VOICES, playFrequency, type Voice } from '../lib/audio';
 import { useAuth } from '../hooks/use-auth';
@@ -13,9 +12,8 @@ import { useMedia } from '../hooks/use-media';
 import type { Notation } from '../lib/notation';
 import { AccountControl } from '../components/account-control';
 import { ControlsPanel, ControlsPopover } from '../components/controls-popover';
-import { NotationSwitch } from '../components/notation-switch';
 import { Keybed } from '../components/keybed';
-import { Mark } from '../components/mark';
+import { Pages } from '../components/pages';
 import { MAX_BPM, MIN_BPM } from '../lib/metronome';
 import { MetronomePanel } from '../components/metronome-panel';
 import { PracticeControl } from '../components/practice-control';
@@ -105,12 +103,7 @@ export function Dashboard() {
      */
     <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
       <header className="flex shrink-0 items-center justify-between gap-2 px-0.5">
-        <h1 className="flex shrink-0 items-center gap-2 text-[18px] font-semibold leading-none tracking-[-0.02em] short:gap-1.5 short:text-[14px]">
-          <Mark />
-          {/* The name stands down where the header runs out of width; the
-              mark still says whose app this is. */}
-          <span className="narrow:sr-only">Perfect Pitch</span>
-        </h1>
+        <Pages />
         {/*
          * Grouped by what the controls are for, with the gaps doing the
          * grouping: tight inside a group, wide between. Eight caps in a row at
@@ -118,17 +111,6 @@ export function Dashboard() {
          * what, which is a job the layout should have done.
          */}
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-4 short:gap-2">
-          <Link
-            to="/notes"
-            className={
-              'keycap keycap-pressable shrink-0 px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-graphite hover:border-engrave hover:bg-white active:keycap-pressed short:px-2 short:py-1 short:text-[9px]'
-            }
-          >
-            notes &rarr;
-          </Link>
-          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
-          <NotationSwitch notation={notation} onNotationChange={setNotation} />
-          <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
 
           {/* The two things you reach for while playing, kept together. */}
           <span className="flex items-center gap-1.5 short:gap-1">
@@ -167,6 +149,8 @@ export function Dashboard() {
           <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
           {!roomy && (
             <ControlsPopover
+              notation={notation}
+              onNotationChange={setNotation}
               tolerance={tolerance}
               onToleranceChange={setTolerance}
               sustain={sustain}
@@ -210,6 +194,8 @@ export function Dashboard() {
               keeps its button and this is not rendered at all. */}
           {roomy && (
             <ControlsPanel
+              notation={notation}
+              onNotationChange={setNotation}
               tolerance={tolerance}
               onToleranceChange={setTolerance}
               sustain={sustain}
