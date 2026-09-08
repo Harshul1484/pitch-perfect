@@ -20,6 +20,8 @@ interface Measured {
   rms300: number;
   rms700: number;
   zcr: number[];
+  /** Third harmonic relative to the fundamental: a bowed string stays rich. */
+  harmonicRichness: number;
 }
 
 async function measure(page: import('@playwright/test').Page) {
@@ -63,6 +65,19 @@ async function measure(page: import('@playwright/test').Page) {
 
     const out: Record<string, unknown> = {};
 
+    const amplitudeAt = (data: Float32Array, frequency: number, from: number, to: number) => {
+      const first = Math.floor(from * rate);
+      const last = Math.min(Math.floor(to * rate), data.length);
+      let real = 0;
+      let imaginary = 0;
+      for (let index = first; index < last; index += 1) {
+        const angle = (2 * Math.PI * frequency * (index - first)) / rate;
+        real += data[index] * Math.cos(angle);
+        imaginary -= data[index] * Math.sin(angle);
+      }
+      return Math.hypot(real, imaginary) / Math.max(1, last - first);
+    };
+
     for (const voice of ['violin', 'piano'] as const) {
       const ctx = new OfflineAudioContext(1, Math.ceil(rate * (duration + 0.2)), rate);
       audio.buildVoice(ctx, ctx.destination, voice, 440, 0, duration, 1);
@@ -78,6 +93,8 @@ async function measure(page: import('@playwright/test').Page) {
         rms300: rms(data, 0.29, 0.31),
         rms700: rms(data, 0.69, 0.71),
         zcr: [0.35, 0.45, 0.55, 0.65, 0.75].map((at) => zcr(data, at, at + 0.08)),
+        harmonicRichness:
+          amplitudeAt(data, 440 * 3, 0.4, 0.8) / amplitudeAt(data, 440, 0.4, 0.8),
       };
     }
 
@@ -102,6 +119,16 @@ test('the violin is bowed and the piano is struck', async ({ page }) => {
   expect(piano.rms50).toBeGreaterThan(0.09);
   expect(piano.rms300).toBeLessThan(piano.rms50 * 0.3);
   expect(piano.rms700).toBeLessThan(piano.rms300 * 0.3);
+});
+
+test('the violin retains a rich upper harmonic after the bow settles', async ({ page }) => {
+  await page.goto(BASE_URL);
+  const { violin, piano } = await measure(page);
+
+  // The old filtered sawtooth loses much of its upper voice. A violin needs a
+  // strong third partial (the twelfth) to retain its woody, bowed character.
+  expect(violin.harmonicRichness).toBeGreaterThan(0.45);
+  expect(violin.harmonicRichness).toBeGreaterThan(piano.harmonicRichness * 2);
 });
 
 test('the violin has vibrato and the piano does not', async ({ page }) => {

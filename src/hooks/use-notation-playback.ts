@@ -76,7 +76,7 @@ export function useNotationPlayback(
     const bus = ctx.createGain();
     bus.connect(ctx.destination);
 
-    const sources: OscillatorNode[] = [];
+    const sources: AudioScheduledSourceNode[] = [];
 
     for (const item of schedule.placed) {
       if (item.midi === null) continue;

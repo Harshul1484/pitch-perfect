@@ -48,8 +48,49 @@ const VIOLIN_RELEASE = 0.14;
 const VIBRATO_HZ = 5.5;
 const VIBRATO_CENTS = 11;
 const VIBRATO_DELAY = 0.18;
-/** Rolls off the buzz of a raw sawtooth into something closer to a string. */
-const BODY_HZ = 2600;
+/** The low-pass is deliberately open: a violin keeps its upper harmonics. */
+const BODY_HZ = 4800;
+const CHORUS_CENTS = -4;
+const BOW_NOISE_PEAK = 0.014;
+
+type SoundSource = AudioScheduledSourceNode;
+
+/**
+ * A compact harmonic profile measured in partials rather than a raw sawtooth.
+ * The third through sixth partials stay present, which supplies the bright,
+ * woody quality that makes a bowed string recognisable at a small volume.
+ */
+function violinWave(ctx: BaseAudioContext): PeriodicWave {
+  const real = new Float32Array(13);
+  const imaginary = new Float32Array([
+    0,
+    1,
+    0.72,
+    0.74,
+    0.48,
+    0.36,
+    0.28,
+    0.21,
+    0.16,
+    0.12,
+    0.09,
+    0.06,
+    0.04,
+  ]);
+  return ctx.createPeriodicWave(real, imaginary, { disableNormalization: false });
+}
+
+/** A repeatable, soft bow-noise buffer: texture without random test output. */
+function bowNoise(ctx: BaseAudioContext, seconds: number): AudioBuffer {
+  const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * seconds), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  let seed = 0x1a2b3c4d;
+  for (let index = 0; index < samples.length; index += 1) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    samples[index] = (seed / 0xffffffff) * 2 - 1;
+  }
+  return buffer;
+}
 
 /**
  * A bowed string.
@@ -67,18 +108,22 @@ function bowed(
   startedAt: number,
   durationSeconds: number,
   volume: number,
-): OscillatorNode[] {
+): SoundSource[] {
   const oscillator = ctx.createOscillator();
+  const chorus = ctx.createOscillator();
   const body = ctx.createBiquadFilter();
   const gain = ctx.createGain();
 
-  oscillator.type = 'sawtooth';
+  oscillator.setPeriodicWave(violinWave(ctx));
   oscillator.frequency.setValueAtTime(frequency, startedAt);
+  chorus.type = 'triangle';
+  chorus.frequency.setValueAtTime(frequency, startedAt);
+  chorus.detune.setValueAtTime(CHORUS_CENTS, startedAt);
 
   body.type = 'lowpass';
   // Track the note: high notes need the filter open further or they go dull.
-  body.frequency.setValueAtTime(Math.max(BODY_HZ, frequency * 4), startedAt);
-  body.Q.setValueAtTime(0.7, startedAt);
+  body.frequency.setValueAtTime(Math.max(BODY_HZ, frequency * 6), startedAt);
+  body.Q.setValueAtTime(0.45, startedAt);
 
   const attack = Math.min(VIOLIN_ATTACK, durationSeconds * 0.4);
   const release = Math.min(VIOLIN_RELEASE, durationSeconds * 0.4);
@@ -94,6 +139,10 @@ function bowed(
   gain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
 
   oscillator.connect(body);
+  const chorusGain = ctx.createGain();
+  chorusGain.gain.setValueAtTime(0.16, startedAt);
+  chorus.connect(chorusGain);
+  chorusGain.connect(body);
   body.connect(gain);
   gain.connect(destination);
 
@@ -108,13 +157,35 @@ function bowed(
   );
   lfo.connect(depth);
   depth.connect(oscillator.detune);
+  depth.connect(chorus.detune);
+
+  // A quiet, filtered bow trace is felt more than heard. It avoids the sterile
+  // pure-tone quality while remaining far below the pitched string.
+  const noise = ctx.createBufferSource();
+  const noiseFilter = ctx.createBiquadFilter();
+  const noiseGain = ctx.createGain();
+  noise.buffer = bowNoise(ctx, durationSeconds);
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.setValueAtTime(Math.min(Math.max(frequency * 1.2, 500), 3200), startedAt);
+  noiseFilter.Q.setValueAtTime(0.9, startedAt);
+  noiseGain.gain.setValueAtTime(0, startedAt);
+  noiseGain.gain.linearRampToValueAtTime(BOW_NOISE_PEAK * volume, startedAt + attack);
+  noiseGain.gain.setValueAtTime(BOW_NOISE_PEAK * volume * 0.4, startedAt + attack + 0.08);
+  noiseGain.gain.exponentialRampToValueAtTime(SILENCE, startedAt + durationSeconds);
+  noise.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(destination);
 
   lfo.start(startedAt);
   lfo.stop(startedAt + durationSeconds);
   oscillator.start(startedAt);
   oscillator.stop(startedAt + durationSeconds);
+  chorus.start(startedAt);
+  chorus.stop(startedAt + durationSeconds);
+  noise.start(startedAt);
+  noise.stop(startedAt + durationSeconds);
 
-  return [oscillator, lfo];
+  return [oscillator, chorus, lfo, noise];
 }
 
 /**
@@ -129,7 +200,7 @@ function struck(
   startedAt: number,
   durationSeconds: number,
   volume: number,
-): OscillatorNode[] {
+): SoundSource[] {
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
 
@@ -162,7 +233,7 @@ export function scheduleTone(
   voice: Voice = 'violin',
   /** Where to play into. Defaults to the speakers. */
   destination?: AudioNode,
-): OscillatorNode[] {
+): SoundSource[] {
   const ctx = getAudioContext();
   if (!ctx || volume <= 0) return [];
 
@@ -191,7 +262,7 @@ export function buildVoice(
   startedAt: number,
   durationSeconds: number,
   volume: number,
-): OscillatorNode[] {
+): SoundSource[] {
   return voice === 'piano'
     ? struck(ctx, destination, frequency, startedAt, durationSeconds, volume)
     : bowed(ctx, destination, frequency, startedAt, durationSeconds, volume);

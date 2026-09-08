@@ -51,6 +51,7 @@ class FakeAudioContext {
       frequency: param(),
       detune: param(0),
       connect: vi.fn(),
+      setPeriodicWave: vi.fn(),
       start: vi.fn(),
       stop: vi.fn((at: number) => {
         record.stoppedAt = at;
@@ -66,6 +67,27 @@ class FakeAudioContext {
 
   createBiquadFilter() {
     return { type: '', frequency: param(), Q: param(), connect: vi.fn() };
+  }
+
+  createPeriodicWave() {
+    return {};
+  }
+
+  createBuffer() {
+    return { getChannelData: () => new Float32Array(44_100) };
+  }
+
+  createBufferSource() {
+    const record: { stoppedAt: number | null } = { stoppedAt: null };
+    started.push(record);
+    return {
+      buffer: null,
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn((at: number) => {
+        record.stoppedAt = at;
+      }),
+    };
   }
 }
 
@@ -104,8 +126,8 @@ describe('useNotationPlayback', () => {
 
     act(() => result.current.play());
 
-    // Four notes, and the violin runs an oscillator plus a vibrato LFO each.
-    expect(started).toHaveLength(8);
+    // Four notes, each with string, chorus, vibrato, and bow-texture sources.
+    expect(started).toHaveLength(16);
     expect(result.current.isPlaying).toBe(true);
   });
 
