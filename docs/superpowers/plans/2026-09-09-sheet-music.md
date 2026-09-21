@@ -50,7 +50,7 @@ export function isSheetMusicEnabled(raw?: string): boolean;
 export function isScoreData(value: unknown): value is ScoreData;
 ```
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
 
 ```ts
 expect(isSheetMusicEnabled(undefined)).toBe(false);
@@ -60,10 +60,10 @@ expect(isScoreData({ version: 1, musicXml: '<score-partwise/>', source: 'generat
 expect(isScoreData({ musicXml: 'x'.repeat(MAX_SCORE_XML + 1) })).toBe(false);
 ```
 
-- [ ] **Step 2: Run red.** Run `bunx vitest run src/lib/feature-flags.test.ts src/lib/score.test.ts`; expect missing-module failures.
-- [ ] **Step 3: Implement green.** Return true only for the literal string `true`. Validate exact score version/source, nonempty XML at most `MAX_SCORE_XML`, time values `1..32`, and tempo `30..260`. Make `score?: ScoreData` flow through composition snapshot/create/save. Add `VITE_SHEET_MUSIC_ENABLED=false` and `VITE_OMR_API_URL=`. Permit an optional bounded score in the composition Firestore allowlist.
-- [ ] **Step 4: Verify.** Run `bunx vitest run src/lib/feature-flags.test.ts src/lib/score.test.ts; bunx tsc --noEmit`; expect PASS.
-- [ ] **Step 5: Commit.** `git add src/lib/feature-flags* src/lib/score* src/hooks/use-compositions.ts firestore.rules .env.example && git commit -m "feat: add gated sheet score data"`
+- [x] **Step 2: Run red.** Run `bunx vitest run src/lib/feature-flags.test.ts src/lib/score.test.ts`; expect missing-module failures.
+- [x] **Step 3: Implement green.** Return true only for the literal string `true`. Validate exact score version/source, nonempty XML at most `MAX_SCORE_XML`, time values `1..32`, and tempo `30..260`. Make `score?: ScoreData` flow through composition snapshot/create/save. Add `VITE_SHEET_MUSIC_ENABLED=false` and `VITE_OMR_API_URL=`. Permit an optional bounded score in the composition Firestore allowlist.
+- [x] **Step 4: Verify.** Run `bunx vitest run src/lib/feature-flags.test.ts src/lib/score.test.ts; bunx tsc --noEmit`; expect PASS.
+- [x] **Step 5: Commit.** `git add src/lib/feature-flags* src/lib/score* src/hooks/use-compositions.ts firestore.rules .env.example && git commit -m "feat: add gated sheet score data"`
 
 ### Task 2: File validation and MusicXML conversion
 
