@@ -72,6 +72,47 @@ End-to-end tests run in real Chrome with a persistent profile, replacing
 WAV fixtures so poorly that clarity sat at 0.2–0.3, testing Chrome's audio
 plumbing rather than this app.
 
+## Sheet music (off by default)
+
+A signed-in player can turn a photo or PDF of one printed melody line into a
+piece, and print any piece as a treble-clef sheet. It is behind a build-time
+flag and ships off.
+
+**Turning it on** takes two variables on the site and one container service:
+
+| Where | Variable | Value |
+| --- | --- | --- |
+| Vercel (site) | `VITE_SHEET_MUSIC_ENABLED` | exactly `true` — anything else leaves it off |
+| Vercel (site) | `VITE_OMR_API_URL` | the recognition service's URL, e.g. `https://omr.example.com` |
+| the service | `SHEET_MUSIC_ENABLED` | exactly `true` |
+
+Both site variables are inlined by Vite when the bundle is built, so changing
+either one needs a **redeploy** of the site, not just a saved setting. The
+service is the container in [`services/omr`](services/omr/README.md) — it holds
+Audiveris, which cannot run in a browser or in a Vercel function — deployed to
+any container host and pointed back at the site's origin through
+`ALLOWED_ORIGIN`.
+
+**What is kept, and what is not.** A scan is sent once, over HTTPS, straight
+from the browser to the service. Neither end keeps it: the browser holds it in
+memory for the duration of the scan and releases its preview URL the moment
+the import is created, cancelled or replaced, and the service writes it to a
+per-request temporary directory that is removed in a `finally`. What is saved
+is the piece — title, the notation as corrected on the review screen, tonic,
+and the symbolic MusicXML the scan produced — in the owner's own Firestore
+document, whose rules refuse any other field. The end-to-end test reads that
+document back and checks for the file's bytes, its name, and any data or blob
+URL, and finds none.
+
+**Review is mandatory.** No recogniser reads a photograph perfectly. Every scan
+is shown for correction, with the engraved score beside the notation and
+whatever the recogniser or the projection wanted flagged, before a piece is
+made from it.
+
+**What it reads.** Printed, single-staff, treble-clef Western notation as PNG,
+JPEG, WebP or PDF of at most 10 MB and 10 pages. Not handwriting, not piano
+systems, not chords, not tablature — those are refused or reduced, and said so.
+
 ## Stack
 
 Vite 8 · React 19 · TypeScript 6 · React Router 8 · Tailwind CSS 4 ·
@@ -93,7 +134,14 @@ src/
 ├─ components/    # note tile, octave row, readout, cents meter
 └─ routes/
    └─ dashboard.tsx
+
+services/
+└─ omr/            # sheet recognition: Audiveris in a container, nothing kept
 ```
+
+Sheet music lives in `lib/feature-flags.ts`, `lib/score.ts`, `lib/musicxml.ts`,
+`lib/sheet-file.ts`, `lib/omr-client.ts`, `lib/engrave.ts` and the
+`sheet-*` and `engraved` components, all reached only from the enabled branch.
 
 ## Design notes
 

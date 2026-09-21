@@ -167,7 +167,7 @@ assert.deepEqual(await readdir(WORK_ROOT), []);
 
 **Files:** Modify `README.md`, `.env.example`, and `e2e/notes.spec.ts`.
 
-- [ ] **Step 1: Add failing acceptance tests.**
+- [x] **Step 1: Add failing acceptance tests.**
 
 ```ts
 await expect(page.getByRole('button', { name: /import sheet/i })).toHaveCount(0);
@@ -175,7 +175,7 @@ await expect(page.getByRole('button', { name: /import sheet/i })).toHaveCount(0)
 // and assert the score preview plus print/download actions exist.
 ```
 
-- [ ] **Step 2: Run red.** Run `bunx playwright test e2e/notes.spec.ts --grep "sheet"`; expect failure before final flag/test wiring.
-- [ ] **Step 3: Implement release configuration.** Seed true only in sheet e2e contexts; route the endpoint to a deterministic mocked MusicXML response. Document the two Vercel variables, redeploy requirement, and no-upload-retention guarantee.
+- [x] **Step 2: Run red.** Run `bunx playwright test e2e/notes.spec.ts --grep "sheet"`; expect failure before final flag/test wiring.
+- [x] **Step 3: Implement release configuration.** Seed true only in sheet e2e contexts; route the endpoint to a deterministic mocked MusicXML response. Document the two Vercel variables, redeploy requirement, and no-upload-retention guarantee.
 - [ ] **Step 4: Verify full release suite.** Run `bunx vitest run; bunx eslint .; bunx tsc --noEmit; bun run build; bunx playwright test`; expect all tests pass, with only the existing two lint warnings if unchanged.
 - [ ] **Step 5: Commit.** `git add README.md .env.example e2e/notes.spec.ts && git commit -m "docs: document gated sheet music release"`
