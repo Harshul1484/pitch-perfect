@@ -36,7 +36,16 @@ export interface CompositionsState {
   status: CompositionsStatus;
   items: Composition[];
   error: string | null;
-  create: (title: string, tonic: number, score?: ScoreData) => Promise<string | null>;
+  /**
+   * A new piece. An import arrives with its notation and score already in
+   * hand, and they go in the same write as the title: a piece that exists
+   * for a moment with a score and no notes is a piece a reload can find.
+   */
+  create: (
+    title: string,
+    tonic: number,
+    contents?: { notation?: string; score?: ScoreData },
+  ) => Promise<string | null>;
   save: (
     id: string,
     changes: { title?: string; notation?: string; tonic?: number; score?: ScoreData },
@@ -119,17 +128,21 @@ export function useCompositions(uid: string | null): CompositionsState {
   const error = fresh ? result.error : null;
 
   const create = useCallback(
-    async (title: string, tonic: number, score?: ScoreData) => {
+    async (
+      title: string,
+      tonic: number,
+      contents?: { notation?: string; score?: ScoreData },
+    ) => {
       const db = getDb();
       if (!db || !path) return null;
 
       const created = await addDoc(collection(db, path), {
         title,
-        notation: '',
+        notation: contents?.notation ?? '',
         tonic,
         // Spread rather than set: Firestore rejects an explicit undefined,
         // and a piece without a score should have no such field at all.
-        ...(score ? { score } : {}),
+        ...(contents?.score ? { score: contents.score } : {}),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

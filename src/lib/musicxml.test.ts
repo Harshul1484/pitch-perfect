@@ -212,3 +212,33 @@ describe('scoreFromLines', () => {
     expect(() => linesFromMusicXml(xml, 0)).not.toThrow();
   });
 });
+
+describe('the key signature', () => {
+  const inKey = (fifths: number, mode = '') =>
+    score(
+      `<measure number="1">${attributes(1, 4, 4, fifths).replace(
+        '</key>',
+        `${mode ? `<mode>${mode}</mode>` : ''}</key>`,
+      )}${note('C', 4, 4)}</measure>`,
+    );
+
+  it('suggests Sa on the tonic of the key', () => {
+    expect(linesFromMusicXml(inKey(0), 0).suggestedTonic).toBe(0); // C
+    expect(linesFromMusicXml(inKey(1), 0).suggestedTonic).toBe(7); // G
+    expect(linesFromMusicXml(inKey(2), 0).suggestedTonic).toBe(2); // D
+    expect(linesFromMusicXml(inKey(-1), 0).suggestedTonic).toBe(5); // F
+    expect(linesFromMusicXml(inKey(-3), 0).suggestedTonic).toBe(3); // E flat
+  });
+
+  it('puts Sa on the minor tonic when the key says minor', () => {
+    expect(linesFromMusicXml(inKey(0, 'minor'), 0).suggestedTonic).toBe(9); // A minor
+    expect(linesFromMusicXml(inKey(-1, 'minor'), 0).suggestedTonic).toBe(2); // D minor
+  });
+
+  it('suggests nothing when the score has no key', () => {
+    const keyless = score(
+      `<measure number="1"><attributes><divisions>1</divisions></attributes>${note('C', 4, 4)}</measure>`,
+    );
+    expect(linesFromMusicXml(keyless, 0).suggestedTonic).toBeNull();
+  });
+});

@@ -102,7 +102,7 @@ expect(scoreFromLines(parseNotation('S R | G -'), 0, 'Etude', 80).musicXml).toCo
 export function SheetPreview(props: { score: ScoreData; title: string; onClose(): void }): ReactNode;
 ```
 
-- [ ] **Step 1: Write failing component tests.**
+- [x] **Step 1: Write failing component tests.**
 
 ```tsx
 render(<SheetPreview score={SCORE} title="Etude" onClose={close} />);
@@ -111,10 +111,10 @@ await user.click(screen.getByRole('button', { name: 'download musicxml' }));
 expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
 ```
 
-- [ ] **Step 2: Run red.** Run `bunx vitest run src/components/sheet-preview.test.tsx`; expect missing-component failure.
-- [ ] **Step 3: Implement green.** Add `opensheetmusicdisplay` to `package.json` for the user’s Bun install. Dynamically import it only after the modal opens; render an SVG container labeled `sheet music`; revoke the download object URL; call `window.print()` after applying a print class. Add the feature-gated `view sheet` cap. Use `composition.score ?? scoreFromLines(lines, tonic, title, bpm)` so old pieces work.
+- [x] **Step 2: Run red.** Run `bunx vitest run src/components/sheet-preview.test.tsx`; expect missing-component failure.
+- [x] **Step 3: Implement green.** Add `opensheetmusicdisplay` to `package.json` for the user’s Bun install. Dynamically import it only after the modal opens; render an SVG container labeled `sheet music`; revoke the download object URL; call `window.print()` after applying a print class. Add the feature-gated `view sheet` cap. Use `composition.score ?? scoreFromLines(lines, tonic, title, bpm)` so old pieces work.
 - [ ] **Step 4: Verify.** Run `bunx vitest run src/components/sheet-preview.test.tsx; bunx tsc --noEmit`; expect PASS. Build with the false flag and assert there is no visible control.
-- [ ] **Step 5: Commit.** `git add package.json src/components/sheet-preview* src/components/notation-editor.tsx && git commit -m "feat: render printable sheets from notes"`
+- [x] **Step 5: Commit.** `git add package.json src/components/sheet-preview* src/components/notation-editor.tsx && git commit -m "feat: render printable sheets from notes"`
 
 ### Task 4: Import, review, and private creation flow
 
@@ -126,7 +126,7 @@ expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
 export async function recognizeSheet(file: File, endpoint: string): Promise<{ musicXml: string; warnings: string[] }>;
 ```
 
-- [ ] **Step 1: Write failing workflow tests.**
+- [x] **Step 1: Write failing workflow tests.**
 
 ```tsx
 await user.upload(screen.getByLabelText('sheet file'), badSvg);
@@ -138,10 +138,10 @@ await user.click(screen.getByRole('button', { name: 'create piece' }));
 expect(create).toHaveBeenCalledWith('Etude', 0, expect.objectContaining({ source: 'imported' }));
 ```
 
-- [ ] **Step 2: Run red.** Run `bunx vitest run src/lib/omr-client.test.ts src/components/sheet-import.test.tsx`; expect missing-module failures.
-- [ ] **Step 3: Implement green.** Send one `FormData` field named `sheet` to `${VITE_OMR_API_URL}/recognize`; never call Firebase Storage. Keep File/object URL in local state only and revoke it on cancel/replacement/unmount. Show warnings and editable projected notation before create. Create atomically with the imported `ScoreData`; lazy-load and render every UI only when the feature flag is true.
+- [x] **Step 2: Run red.** Run `bunx vitest run src/lib/omr-client.test.ts src/components/sheet-import.test.tsx`; expect missing-module failures.
+- [x] **Step 3: Implement green.** Send one `FormData` field named `sheet` to `${VITE_OMR_API_URL}/recognize`; never call Firebase Storage. Keep File/object URL in local state only and revoke it on cancel/replacement/unmount. Show warnings and editable projected notation before create. Create atomically with the imported `ScoreData`; lazy-load and render every UI only when the feature flag is true.
 - [ ] **Step 4: Verify.** Run component tests plus `bunx playwright test e2e/notes.spec.ts --grep "sheet"`; mock recognition and assert Firestore receives symbolic score data, never source bytes/data URL.
-- [ ] **Step 5: Commit.** `git add src/lib/omr-client* src/components/sheet-import* src/routes/notes.tsx src/hooks/use-compositions.ts e2e/notes.spec.ts && git commit -m "feat: import reviewed sheet music"`
+- [x] **Step 5: Commit.** `git add src/lib/omr-client* src/components/sheet-import* src/routes/notes.tsx src/hooks/use-compositions.ts e2e/notes.spec.ts && git commit -m "feat: import reviewed sheet music"`
 
 ### Task 5: Ephemeral Audiveris recognition service
 

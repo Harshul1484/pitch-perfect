@@ -16,17 +16,31 @@ export function isSheetMusicEnabled(raw?: string): boolean {
 }
 
 /**
+ * A query-string override, honoured in development only.
+ *
+ * The same seam the Firebase emulators use: an end-to-end test can switch the
+ * feature on and point recognition at a stub for one page load, without a
+ * rebuild. The DEV check means a production build ignores the parameter
+ * entirely — there, the environment variable is the only word.
+ */
+function devOverride(name: string): string | null {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+/**
  * Whether this build has sheet music turned on.
  *
  * Read once here rather than at each call site, so there is one place the
  * variable's name is spelled and one place the rule is applied.
  */
-export const SHEET_MUSIC_ENABLED = isSheetMusicEnabled(
-  import.meta.env.VITE_SHEET_MUSIC_ENABLED,
-);
+export const SHEET_MUSIC_ENABLED =
+  isSheetMusicEnabled(import.meta.env.VITE_SHEET_MUSIC_ENABLED) ||
+  devOverride('sheet') === '1';
 
 /**
  * Where scans are sent for recognition. Empty when unset, which the import
  * flow treats as "recognition is unavailable" rather than guessing a host.
  */
-export const OMR_API_URL: string = import.meta.env.VITE_OMR_API_URL ?? '';
+export const OMR_API_URL: string =
+  devOverride('omr') ?? import.meta.env.VITE_OMR_API_URL ?? '';

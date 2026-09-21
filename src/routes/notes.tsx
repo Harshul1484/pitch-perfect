@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { Suspense, lazy, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { useCompositions } from '../hooks/use-compositions';
 import { AccountControl, GoogleMark } from '../components/account-control';
@@ -7,6 +7,19 @@ import { usePitchDetection } from '../hooks/use-pitch-detection';
 import { Mark } from '../components/mark';
 import { Pages } from '../components/pages';
 import { nearestNote } from '../lib/notes';
+import { OMR_API_URL, SHEET_MUSIC_ENABLED } from '../lib/feature-flags';
+import { useNumberPreference } from '../hooks/use-preference';
+
+/*
+ * Fetched only when an import is opened, which only happens when the feature
+ * is on. Nothing about scanning a sheet is in the bundle a player who never
+ * scans one downloads.
+ */
+const SheetImport = lazy(() =>
+  import('../components/sheet-import').then((module) => ({
+    default: module.SheetImport,
+  })),
+);
 
 /*
  * Hover styling belongs to the off state, never alongside the on state.
@@ -31,6 +44,9 @@ export function Notes() {
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  // Sa as the tuner has it, the starting point for reading a scanned score.
+  const [tonic] = useNumberPreference('pitch.tonic', 0, 0, 11);
 
   const selected = useMemo(
     () => store.items.find((item) => item.id === selectedId) ?? null,
@@ -66,13 +82,30 @@ export function Notes() {
         <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 narrow:w-[132px] short:gap-1.5 short:p-2">
           <div className="flex items-center justify-between">
             <span className="mono-label">pieces</span>
-            <button
-              type="button"
-              onClick={() => void createPiece()}
-              className={`${KEY_OFF} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
-            >
-              new
-            </button>
+            <span className="flex items-center gap-1">
+              {SHEET_MUSIC_ENABLED && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedId(null);
+                    setImporting(true);
+                  }}
+                  className={`${KEY_OFF} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
+                >
+                  import sheet
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setImporting(false);
+                  void createPiece();
+                }}
+                className={`${KEY_OFF} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
+              >
+                new
+              </button>
+            </span>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
@@ -85,7 +118,10 @@ export function Notes() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setSelectedId(item.id)}
+                onClick={() => {
+                  setImporting(false);
+                  setSelectedId(item.id);
+                }}
                 aria-current={item.id === selectedId ? 'true' : undefined}
                 className={`${
                   item.id === selectedId ? KEY_ON : KEY_OFF
@@ -103,7 +139,25 @@ export function Notes() {
           )}
         </aside>
 
-        {selected ? (
+        {SHEET_MUSIC_ENABLED && importing ? (
+          <Suspense
+            fallback={
+              <div className="keycap flex min-h-0 min-w-0 flex-1 items-start bg-tile p-3">
+                <span className="mono-label">loading</span>
+              </div>
+            }
+          >
+            <SheetImport
+              tonic={tonic}
+              endpoint={OMR_API_URL}
+              onCreate={async (title, sa, contents) => {
+                const id = await store.create(title, sa, contents);
+                if (id) setSelectedId(id);
+              }}
+              onClose={() => setImporting(false)}
+            />
+          </Suspense>
+        ) : selected ? (
           // Keyed on the id, so switching pieces remounts the editor and its
           // state starts from this piece rather than being copied in.
           <NotationEditor
