@@ -9,6 +9,18 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <title>Perfect Pitch</title>
+
+    <!-- Installable. The manifest names the app, gives it its icon, and asks
+         for landscape — which, in the installed app, the system provides,
+         so the rotation in index.css is only for the browser tab. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#e4e4df" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pitch" />
   </head>
   <body>
     <div id="root"></div>

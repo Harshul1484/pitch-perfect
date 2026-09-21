@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { useCompositions } from '../hooks/use-compositions';
 import { AccountControl, GoogleMark } from '../components/account-control';
+import { InstallControl } from '../components/install-control';
 import { NotationEditor } from '../components/notation-editor';
 import { usePitchDetection } from '../hooks/use-pitch-detection';
 import { Mark } from '../components/mark';
@@ -280,6 +281,7 @@ function Shell({
               {listening ? 'stop' : 'listen'}
             </button>
           )}
+          <InstallControl />
           {auth && <AccountControl {...auth} />}
         </div>
       </header>

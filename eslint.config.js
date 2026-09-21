@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules'] },
+  // .worktrees holds whole second copies of the repo; each has its own tsconfig,
+  // and typescript-eslint refuses to guess between two roots.
+  { ignores: ['dist', 'coverage', 'node_modules', '.worktrees'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -20,10 +22,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
   prettier,

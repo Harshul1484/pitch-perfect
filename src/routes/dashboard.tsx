@@ -11,6 +11,7 @@ import { useHoldPreference, usePractice } from '../hooks/use-practice';
 import { useMedia } from '../hooks/use-media';
 import type { Notation } from '../lib/notation';
 import { AccountControl } from '../components/account-control';
+import { InstallControl } from '../components/install-control';
 import { ControlsPanel, ControlsPopover } from '../components/controls-popover';
 import { Keybed } from '../components/keybed';
 import { Pages } from '../components/pages';
@@ -165,6 +166,8 @@ export function Dashboard() {
             </>
           )}
           <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
+          {/* Only while the app can be installed from here; gone once it is. */}
+          <InstallControl />
           <AccountControl {...auth} />
         </div>
       </header>
