@@ -78,7 +78,7 @@ export function scoreFromLines(lines: Line[], tonic: number, title: string, temp
 export function linesFromMusicXml(xml: string, tonic: number): { title: string; lines: Line[]; score: ScoreData; warnings: string[] };
 ```
 
-- [ ] **Step 1: Write failing tests.**
+- [x] **Step 1: Write failing tests.**
 
 ```ts
 expect(checkSheetFile(new File(['x'], 'scan.png', { type: 'image/png' }))).toBeNull();
@@ -87,10 +87,10 @@ expect(serializeLines(linesFromMusicXml(FIXTURE, 0).lines)).toBe('S R | G -');
 expect(scoreFromLines(parseNotation('S R | G -'), 0, 'Etude', 80).musicXml).toContain('<step>C</step>');
 ```
 
-- [ ] **Step 2: Run red.** Run `bunx vitest run src/lib/sheet-file.test.ts src/lib/musicxml.test.ts`; expect missing-module failures.
-- [ ] **Step 3: Implement green.** Validate only four MIME types and the 10 MB cap without caching bytes. Parse MusicXML with `DOMParser`, reject parser errors and `DOCTYPE`, require one part/treble staff, map pitches with `tokenFromMidi`, measures to bars, and unrepresentable rhythm to review warnings. Generate complete 4/4 score-partwise XML; plain note = beat, sustain = extension, grouped notes share the beat.
-- [ ] **Step 4: Verify.** Run `bunx vitest run src/lib/sheet-file.test.ts src/lib/musicxml.test.ts; bunx vitest run`; expect PASS.
-- [ ] **Step 5: Commit.** `git add src/lib/sheet-file* src/lib/musicxml* && git commit -m "feat: convert single melody scores to notes"`
+- [x] **Step 2: Run red.** Run `bunx vitest run src/lib/sheet-file.test.ts src/lib/musicxml.test.ts`; expect missing-module failures.
+- [x] **Step 3: Implement green.** Validate only four MIME types and the 10 MB cap without caching bytes. Parse MusicXML with `DOMParser`, reject parser errors and `DOCTYPE`, require one part/treble staff, map pitches with `tokenFromMidi`, measures to bars, and unrepresentable rhythm to review warnings. Generate complete 4/4 score-partwise XML; plain note = beat, sustain = extension, grouped notes share the beat.
+- [x] **Step 4: Verify.** Run `bunx vitest run src/lib/sheet-file.test.ts src/lib/musicxml.test.ts; bunx vitest run`; expect PASS.
+- [x] **Step 5: Commit.** `git add src/lib/sheet-file* src/lib/musicxml* && git commit -m "feat: convert single melody scores to notes"`
 
 ### Task 3: Browser score preview and export
 
