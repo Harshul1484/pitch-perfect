@@ -25,8 +25,28 @@ function isOwner(uid) {
 // documents or exhaust the quota with one enormous write.
 function isWellFormed() {
   let data = request.resource.data;
-  return data.keys().hasOnly(['title', 'notation', 'tonic', 'createdAt', 'updatedAt'])
+  return data.keys().hasOnly(['title', 'notation', 'tonic', 'score', 'createdAt', 'updatedAt'])
     && data.title is string && data.title.size() <= 200
     && data.notation is string && data.notation.size() <= 20000
-    && data.tonic is int && data.tonic >= 0 && data.tonic <= 11;
+    && data.tonic is int && data.tonic >= 0 && data.tonic <= 11
+    && (!('score' in data) || isWellFormedScore(data.score));
+}
+
+// A piece may carry the engraved score it was imported from or printed to.
+// Symbolic notation only: no scan, no image, no rendered page. The same
+// bounds the client checks on the way out, enforced here on the way in, so a
+// client that has been tampered with cannot store something the app would
+// then refuse to read.
+function isWellFormedScore(score) {
+  return score.keys().hasOnly(['version', 'musicXml', 'source', 'timeSignature', 'tempo'])
+    && score.version == 1
+    && score.musicXml is string
+    && score.musicXml.size() > 0 && score.musicXml.size() <= 200000
+    && score.source in ['imported', 'generated']
+    && score.timeSignature.keys().hasOnly(['beats', 'beatType'])
+    && score.timeSignature.beats is int
+    && score.timeSignature.beats >= 1 && score.timeSignature.beats <= 32
+    && score.timeSignature.beatType is int
+    && score.timeSignature.beatType >= 1 && score.timeSignature.beatType <= 32
+    && score.tempo is number && score.tempo >= 30 && score.tempo <= 260;
 }

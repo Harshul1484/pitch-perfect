@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { BASE_URL } from '../playwright.config';
 import { audit, expectNothingCutOff } from './audit';
 import { expectStaysDark } from './cap';
+import { parseNotation } from '../src/lib/composition';
+import { scoreFromLines } from '../src/lib/musicxml';
 
 /**
  * The notes feature, end to end against the Firebase emulators.
@@ -30,6 +32,8 @@ async function openSignedIn(
    * sargam seeds the preference the page reads.
    */
   notation?: 'western' | 'sargam',
+  /** Extra query parameters, for the development-only seams the app offers. */
+  query = '',
 ): Promise<{ context: import('@playwright/test').BrowserContext; page: Page }> {
   // A fresh profile every run. These tests sign in, so a profile left over
   // from last time comes back already signed in — and then the sign-in button
@@ -84,7 +88,7 @@ async function openSignedIn(
   }
 
   const page = await context.newPage();
-  await page.goto(NOTES_URL);
+  await page.goto(NOTES_URL + query);
 
   const [popup] = await Promise.all([
     page.waitForEvent('popup'),
@@ -221,7 +225,12 @@ test('one user cannot see another user notes', async () => {
 });
 
 test('corrects a note in the middle of a line, not just at the end', async () => {
-  const { context, page } = await openSignedIn('notes-caret', undefined, undefined, 'sargam');
+  const { context, page } = await openSignedIn(
+    'notes-caret',
+    undefined,
+    undefined,
+    'sargam',
+  );
 
   await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
@@ -346,7 +355,12 @@ test('changing a piece tonic transposes it rather than rewriting it', async () =
 });
 
 test('undo steps back, and survives a reload', async () => {
-  const { context, page } = await openSignedIn('notes-undo', undefined, undefined, 'sargam');
+  const { context, page } = await openSignedIn(
+    'notes-undo',
+    undefined,
+    undefined,
+    'sargam',
+  );
 
   await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
@@ -379,7 +393,12 @@ test('undo steps back, and survives a reload', async () => {
 });
 
 test('drags across the page to select, then replaces the selection', async () => {
-  const { context, page } = await openSignedIn('notes-drag', undefined, undefined, 'sargam');
+  const { context, page } = await openSignedIn(
+    'notes-drag',
+    undefined,
+    undefined,
+    'sargam',
+  );
 
   await page.getByRole('button', { name: 'new', exact: true }).click();
   const written = page.getByRole('group', { name: 'written notation' });
@@ -456,10 +475,7 @@ test('the caps that are on stay dark under the pointer', async () => {
   await page.getByRole('button', { name: 'new', exact: true }).click();
   await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
 
-  await expectStaysDark(
-    page.getByRole('button', { name: 'Untitled' }),
-    'the open piece',
-  );
+  await expectStaysDark(page.getByRole('button', { name: 'Untitled' }), 'the open piece');
 
   const tie = page.getByRole('button', { name: /^tie/ });
   await tie.click();
@@ -617,6 +633,187 @@ test('a timed run counts in and then scores the piece', async () => {
 
   // Only the first note is the one being played, so only it can be a hit.
   await expect(panel.getByText('1 of 3 in tune, in time.')).toBeVisible();
+
+  await context.close();
+});
+
+/*
+ * Sheet music, behind its flag.
+ *
+ * The flag is build-time, so the tests reach it through the development-only
+ * query seam — the same arrangement as ?emulator=1 — and point recognition at
+ * a route this file answers itself. Audiveris is not under test here; the
+ * promise that is, is that a scan becomes notes and nothing of the scan is
+ * kept.
+ */
+
+const OMR_STUB = 'http://127.0.0.1:5174/omr-stub';
+const SHEET_ON = `&sheet=1&omr=${OMR_STUB}`;
+
+/** What the stub recogniser answers with: two bars in G, at 96. */
+const RECOGNISED = scoreFromLines(
+  parseNotation('S R G m | P - - -'),
+  7,
+  'Etude',
+  96,
+).musicXml;
+
+/** A one-pixel PNG, so the picker has a real image to preview. */
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+const FIRESTORE =
+  'http://127.0.0.1:8080/v1/projects/pitchperfect-e6070/databases/(default)';
+
+/** Every composition in the emulator, read past the rules as the owner. */
+async function allCompositions(): Promise<Record<string, unknown>[]> {
+  const response = await fetch(`${FIRESTORE}/documents:runQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({
+      structuredQuery: { from: [{ collectionId: 'compositions', allDescendants: true }] },
+    }),
+  });
+  const rows = (await response.json()) as { document?: Record<string, unknown> }[];
+  return rows.flatMap((row) => (row.document ? [row.document] : []));
+}
+
+test('sheet controls stay hidden while the feature is off', async () => {
+  const { context, page } = await openSignedIn('notes-sheet-off');
+
+  await expect(page.getByRole('button', { name: /import sheet/i })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'new', exact: true }).click();
+  await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /view sheet/i })).toHaveCount(0);
+
+  await context.close();
+});
+
+test('imports a scanned sheet as notes, and keeps nothing of the scan', async () => {
+  const { context, page } = await openSignedIn(
+    'notes-sheet-import',
+    undefined,
+    undefined,
+    undefined,
+    SHEET_ON,
+  );
+
+  let received: { field: string; bytes: number } | null = null;
+  await page.route(`${OMR_STUB}/recognize`, async (route) => {
+    const body = route.request().postDataBuffer() ?? Buffer.alloc(0);
+    // One multipart field named sheet, carrying the file.
+    received = {
+      field: /name="([^"]+)"/.exec(body.toString('latin1'))?.[1] ?? '',
+      bytes: body.length,
+    };
+    await route.fulfill({
+      json: { musicXml: RECOGNISED, warnings: ['The stub says check bar two.'] },
+    });
+  });
+
+  await page.getByRole('button', { name: 'import sheet' }).click();
+  await page
+    .getByLabel('sheet file')
+    .setInputFiles({ name: 'scan.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.getByRole('img', { name: /scan\.png/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'scan sheet' }).click();
+
+  // Review: what was read, against the Sa the key signature suggested.
+  await expect(page.getByLabel('title')).toHaveValue('Etude');
+  await expect(page.getByLabel('tonic')).toHaveValue('7');
+  await expect(page.getByLabel('notation')).toHaveValue('S R G m | P - - -');
+  await expect(page.getByRole('list', { name: 'check these' })).toContainText(
+    'check bar two',
+  );
+  expect(received).toEqual({ field: 'sheet', bytes: expect.any(Number) });
+  expect(received!.bytes).toBeGreaterThan(PNG.length);
+
+  // A correction, then the piece.
+  await page.getByLabel('notation').fill('S R G m | P - - - | S');
+  await page.getByRole('button', { name: 'create piece' }).click();
+
+  const written = page.getByRole('group', { name: 'written notation' });
+  await expect(written).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Etude' })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+
+  // The piece has a sheet, and it opens and draws.
+  await page.getByRole('button', { name: 'view sheet' }).click();
+  const preview = page.getByRole('dialog', { name: 'sheet preview' });
+  await expect(preview).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'download musicxml' })).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'print' })).toBeEnabled({
+    timeout: 20_000,
+  });
+  await preview.getByRole('button', { name: 'close' }).click();
+
+  // What Firestore actually holds: the notes and the symbolic score, and no
+  // trace of the file — not its bytes, not a data URL, not the preview URL.
+  const stored = (await allCompositions()).find((doc) =>
+    JSON.stringify(doc).includes('"Etude"'),
+  );
+  expect(stored).toBeDefined();
+  const fields = (stored as { fields: Record<string, unknown> }).fields;
+  expect(Object.keys(fields).sort()).toEqual(
+    ['createdAt', 'notation', 'score', 'title', 'tonic', 'updatedAt'].sort(),
+  );
+  expect(fields.notation).toEqual({ stringValue: 'S R G m | P - - - | S' });
+  expect(fields.tonic).toEqual({ integerValue: '7' });
+  const score = (fields.score as { mapValue: { fields: Record<string, unknown> } })
+    .mapValue.fields;
+  expect(score.source).toEqual({ stringValue: 'imported' });
+  expect(score.tempo).toEqual({ integerValue: '96' });
+  expect((score.musicXml as { stringValue: string }).stringValue).toContain(
+    '<score-partwise',
+  );
+
+  const everything = JSON.stringify(stored);
+  expect(everything).not.toContain('blob:');
+  expect(everything).not.toContain('data:image');
+  expect(everything).not.toContain(PNG.toString('base64').slice(0, 20));
+  expect(everything).not.toContain('scan.png');
+
+  // And it is really saved: a reload finds it, notes and sheet alike.
+  await page.reload();
+  await page.getByRole('button', { name: 'Etude' }).click();
+  await expect(page.getByRole('group', { name: 'written notation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'view sheet' })).toBeVisible();
+
+  await context.close();
+});
+
+test('a sheet that will not scan keeps the file on screen and says why', async () => {
+  const { context, page } = await openSignedIn(
+    'notes-sheet-fails',
+    undefined,
+    undefined,
+    undefined,
+    SHEET_ON,
+  );
+
+  await page.route(`${OMR_STUB}/recognize`, (route) =>
+    route.fulfill({ status: 422, json: { error: 'no staff found' } }),
+  );
+
+  await page.getByRole('button', { name: 'import sheet' }).click();
+  await page
+    .getByLabel('sheet file')
+    .setInputFiles({ name: 'scan.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByRole('button', { name: 'scan sheet' }).click();
+
+  await expect(page.getByRole('alert')).toContainText(/could not read music/i);
+  await expect(page.getByRole('img', { name: /scan\.png/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'scan sheet' })).toBeEnabled();
+
+  // Nothing was created.
+  await page.getByRole('button', { name: 'cancel' }).click();
+  await expect(page.getByText('nothing yet')).toBeVisible();
 
   await context.close();
 });

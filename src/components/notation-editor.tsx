@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   letterToDegree,
   parseNotation,
@@ -56,6 +56,17 @@ import { useHoldPreference, usePractice } from '../hooks/use-practice';
 import { useRun } from '../hooks/use-run';
 import { useNumberPreference } from '../hooks/use-preference';
 import { IN_TUNE_CENTS, type PitchMatch } from '../lib/notes';
+import { SHEET_MUSIC_ENABLED } from '../lib/feature-flags';
+import { scoreFromLines } from '../lib/musicxml';
+
+/*
+ * Fetched only when a sheet is opened, which only happens when the feature is
+ * on. The engraving library behind it is the largest thing this app could
+ * ship, and the tuner has no use for it.
+ */
+const SheetPreview = lazy(() =>
+  import('./sheet-preview').then((module) => ({ default: module.SheetPreview })),
+);
 
 /* Hover lives on the off state only — see the note in routes/notes.tsx. */
 const KEY = 'keycap keycap-pressable active:keycap-pressed';
@@ -125,13 +136,11 @@ export function NotationEditor({
   const [selection, setSelection] = useState<Selection | null>(null);
   const [saptak, setSaptak] = useState(0);
   const [tie, setTie] = useState(false);
-  const [bpm, setBpm] = useState(80);
+  // A piece that came in from a score brings its tempo with it.
+  const [bpm, setBpm] = useState(composition.score?.tempo ?? 80);
+  const [sheetOpen, setSheetOpen] = useState(false);
   // Read only: both of these are set on the tuner and shared by the app.
-  const [notation] = usePreference<Notation>(
-    'pitch.notation',
-    'western',
-    NOTATIONS,
-  );
+  const [notation] = usePreference<Notation>('pitch.notation', 'western', NOTATIONS);
   const [voice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
   const [dirty, setDirty] = useState(false);
 
@@ -401,7 +410,7 @@ export function NotationEditor({
   const selectedRange = selection && !isEmpty(selection) ? ordered(selection) : null;
 
   return (
-    <div className="keycap flex min-h-0 min-w-0 flex-1 flex-col gap-3 bg-tile p-3 short:gap-2 short:p-2">
+    <div className="keycap relative flex min-h-0 min-w-0 flex-1 flex-col gap-3 bg-tile p-3 short:gap-2 short:p-2">
       <div className="flex items-center gap-2 short:gap-1.5">
         <input
           defaultValue={composition.title}
@@ -436,6 +445,16 @@ export function NotationEditor({
             ))}
           </select>
         </label>
+
+        {SHEET_MUSIC_ENABLED && (
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className={`${KEY_OFF} px-2 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
+          >
+            view sheet
+          </button>
+        )}
 
         <button
           type="button"
@@ -638,9 +657,7 @@ export function NotationEditor({
             detectedCents={match?.cents ?? null}
             tolerance={tolerance}
             marks={practice.marks}
-            targetMidi={
-              stage === 'learn' ? (targets[reached]?.midi ?? null) : null
-            }
+            targetMidi={stage === 'learn' ? (targets[reached]?.midi ?? null) : null}
             octaves={octavesOf(targets, match?.note.midi ?? null)}
           />
         </div>
@@ -667,6 +684,27 @@ export function NotationEditor({
           }
         />
       )}
+
+      {/* An imported piece keeps the score it came from, which holds rhythm
+          the notation cannot; anything else is engraved from the notes as
+          they are now. */}
+      {SHEET_MUSIC_ENABLED && sheetOpen && (
+        <Suspense fallback={<span className="mono-label">loading sheet</span>}>
+          <SheetPreview
+            score={
+              composition.score ??
+              scoreFromLines(
+                lines,
+                composition.tonic,
+                composition.title || 'Untitled',
+                bpm,
+              )
+            }
+            title={composition.title || 'Untitled'}
+            onClose={() => setSheetOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -680,7 +718,10 @@ function octavesOf(
   targets: { midi: number }[],
   heard: number | null,
 ): { from: number; to: number } {
-  const midis = [...targets.map((target) => target.midi), ...(heard === null ? [] : [heard])];
+  const midis = [
+    ...targets.map((target) => target.midi),
+    ...(heard === null ? [] : [heard]),
+  ];
   if (midis.length === 0) return { from: 3, to: 5 };
 
   const octave = (midi: number) => Math.floor(midi / 12) - 1;
