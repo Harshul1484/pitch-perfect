@@ -369,6 +369,19 @@ function parse(xml: string): Document {
   return doc;
 }
 
+/**
+ * A score as the engraver may have it.
+ *
+ * Score data read back out of Firestore is checked for shape and size but
+ * not parsed, so this is where a stored score meets a parser for the first
+ * time. It is parsed as data — never handed to anything as markup — with no
+ * DOCTYPE and within the size cap, and what comes out is the parser's own
+ * serialisation rather than the stored string.
+ */
+export function sanitizeMusicXml(xml: string): string {
+  return new XMLSerializer().serializeToString(parse(xml));
+}
+
 /** Direct children matching a name, in document order; querySelector cannot say "direct". */
 function children(parent: Element, name: string): Element[] {
   return Array.from(parent.children).filter((child) => child.nodeName === name);
@@ -389,7 +402,14 @@ function children(parent: Element, name: string): Element[] {
 export function linesFromMusicXml(
   xml: string,
   tonic: number,
-): { title: string; lines: Line[]; score: ScoreData; warnings: string[] } {
+): {
+  title: string;
+  lines: Line[];
+  score: ScoreData;
+  warnings: string[];
+  /** Where the key signature puts Sa, or null when the score has no key. */
+  suggestedTonic: number | null;
+} {
   const doc = parse(xml);
   const root = doc.documentElement;
 
@@ -417,6 +437,7 @@ export function linesFromMusicXml(
   let beats = 4;
   let beatType = 4;
   let tempo: number | null = null;
+  let suggestedTonic: number | null = null;
 
   const measures = children(part, 'measure');
   const hasBreaks = measures.some((m) => m.querySelector('print') !== null);
@@ -438,6 +459,17 @@ export function linesFromMusicXml(
       divisions = integer(attributes, 'divisions', divisions);
       beats = integer(attributes, 'time > beats', beats);
       beatType = integer(attributes, 'time > beat-type', beatType);
+
+      // The key signature names the tonic: G major puts Sa on G, and a
+      // minor key on its own tonic rather than the relative major's. Read
+      // once, from the first key the score declares.
+      const declared = text(attributes, 'key > fifths');
+      const fifths = declared === null ? Number.NaN : Number(declared);
+      if (suggestedTonic === null && Number.isInteger(fifths) && Math.abs(fifths) <= 7) {
+        const major = (((fifths * 7) % 12) + 12) % 12;
+        const minor = text(attributes, 'key > mode') === 'minor';
+        suggestedTonic = minor ? (major + 9) % 12 : major;
+      }
 
       const clef = attributes.querySelector('clef');
       if (clef && !(text(clef, 'sign') === 'G' && integer(clef, 'line', 2) === 2)) {
@@ -576,5 +608,5 @@ export function linesFromMusicXml(
     throw new Error('That score describes a time signature or tempo this cannot keep.');
   }
 
-  return { title, lines, score, warnings: Array.from(warnings) };
+  return { title, lines, score, warnings: Array.from(warnings), suggestedTonic };
 }

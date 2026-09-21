@@ -292,3 +292,36 @@ body {
     animation-duration: 1ms !important;
   }
 }
+
+/*
+ * Printing a sheet. While the preview is printing, the body carries a class
+ * and everything but the engraved page is hidden — visibility rather than
+ * display, so the page keeps its place in the layout and nothing reflows
+ * underneath it. The phone rotation is undone too: paper is not held
+ * sideways.
+ */
+@media print {
+  body.printing-sheet * {
+    visibility: hidden;
+  }
+
+  body.printing-sheet .sheet-page,
+  body.printing-sheet .sheet-page * {
+    visibility: visible;
+  }
+
+  body.printing-sheet .sheet-page {
+    position: fixed;
+    inset: 0;
+    overflow: visible;
+    border: 0;
+    padding: 0;
+    background: white;
+  }
+
+  body.printing-sheet #root {
+    transform: none;
+    width: auto;
+    height: auto;
+  }
+}
