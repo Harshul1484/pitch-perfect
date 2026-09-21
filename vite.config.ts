@@ -9,7 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     // Playwright owns e2e/; vitest would otherwise try to run those specs.
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+    // Anchored at any depth, because a git worktree under .worktrees/ is a
+    // whole second copy of the repo and its e2e/ is not at the root.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
     css: true,
   },
 });

@@ -79,13 +79,35 @@ test('tempo is adjustable by keyboard and is clamped', async () => {
   await tempo.fill('120');
   await expect(tempo).toHaveValue('120');
 
-  // Typed values outside the range are pulled back to it, rather than being
-  // accepted and then producing nonsense timing.
+  // Out of range is held while you are still in the field, and corrected when
+  // you leave it. Correcting it on the keystroke made a tempo of 100
+  // unreachable: the 1 became 30, and the 0 after it made 300, then 260.
   await tempo.fill('5');
+  await expect(tempo).toHaveValue('5');
+  await tempo.blur();
   await expect(tempo).toHaveValue('30');
 
   await tempo.fill('9000');
+  await tempo.blur();
   await expect(tempo).toHaveValue('260');
+
+  await context.close();
+});
+
+test('a tempo is typed one digit at a time, through numbers below the range', async () => {
+  const { context, page } = await openApp('metronome-typed');
+
+  const tempo = page.getByLabel('tempo');
+  await tempo.click();
+  await page.keyboard.press('Control+a');
+  // One, zero, zero — the exact sequence that could not reach 100.
+  await page.keyboard.type('100');
+
+  await expect(tempo).toHaveValue('100');
+
+  // And it is a saved preference, so it has to survive the reload too.
+  await page.reload();
+  await expect(page.getByLabel('tempo')).toHaveValue('100');
 
   await context.close();
 });

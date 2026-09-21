@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { VOICES, type Voice } from '../lib/audio';
 import { NOTATIONS, TONICS, type Notation } from '../lib/notation';
+import { NumberField } from './number-field';
 import { Segmented } from './segmented';
 
 interface ControlsPopoverProps {
@@ -277,10 +278,9 @@ function Row({
  * One typed setting: a number and its unit. The grid draws the label, so this
  * only names itself for assistive technology.
  *
- * The value is clamped as it is typed, the same way the tempo field on the
- * metronome behaves, so a setting can never be left outside the range it is
- * allowed. A reading that is not a number at all — mid-way through typing
- * "0.", say — is ignored rather than treated as zero.
+ * The typing rules live in NumberField, which the tempo field on the
+ * metronome shares: a number is only clamped once you have finished typing
+ * it, never while you are still on your way to it.
  */
 function Field({
   label,
@@ -301,18 +301,14 @@ function Field({
 }) {
   return (
     <span className="flex items-center gap-1.5">
-      <input
-        type="number"
+      <NumberField
+        label={label}
+        value={value}
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(event) => {
-          const next = Number(event.target.value);
-          if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)));
-        }}
-        aria-label={label}
-        className="keycap w-[70px] bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite"
+        onChange={onChange}
+        className="w-[70px]"
       />
       <span
         aria-hidden="true"

@@ -1,4 +1,5 @@
 import { BEATS_PER_BAR, MAX_BPM, MIN_BPM, clampBpm } from '../lib/metronome';
+import { NumberField } from './number-field';
 
 interface MetronomePanelProps {
   bpm: number;
@@ -29,15 +30,14 @@ export function MetronomePanel({
       </div>
 
       <label className="flex items-center gap-2">
-        <input
-          type="number"
+        <NumberField
+          label="tempo"
+          value={bpm}
           min={MIN_BPM}
           max={MAX_BPM}
           step={1}
-          value={bpm}
-          onChange={(event) => onBpmChange(clampBpm(Number(event.target.value)))}
-          aria-label="tempo"
-          className="keycap w-[68px] bg-panel px-2 py-1.5 text-center font-mono text-[13px] tabular-nums outline-none focus:border-graphite short:w-[52px] short:py-1 short:text-[11px]"
+          onChange={(next) => onBpmChange(clampBpm(next))}
+          className="w-[68px] short:w-[52px] short:py-1 short:text-[11px]"
         />
         <span className="mono-label">bpm</span>
       </label>
