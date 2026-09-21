@@ -149,7 +149,7 @@ expect(create).toHaveBeenCalledWith('Etude', 0, expect.objectContaining({ source
 
 **Endpoints:** `GET /health` and `POST /recognize`.
 
-- [ ] **Step 1: Write failing service tests.**
+- [x] **Step 1: Write failing service tests.**
 
 ```js
 const response = await app.inject({ method: 'POST', url: '/recognize', payload: form });
@@ -158,9 +158,9 @@ assert.match(response.json().musicXml, /<score-partwise/);
 assert.deepEqual(await readdir(WORK_ROOT), []);
 ```
 
-- [ ] **Step 2: Run red.** Run `node --test services/omr/src/server.test.mjs`; expect missing-service failure.
-- [ ] **Step 3: Implement green.** Use Fastify/Busboy limits `{ files: 1, fileSize: 10 * 1024 * 1024, fields: 0 }`. Return 404 when `SHEET_MUSIC_ENABLED !== 'true'`, 415 for unsupported MIME, 413 for oversize, 422 for invalid export, and 504 after 90 seconds. Create `mkdtemp(join(tmpdir(), 'perfect-pitch-omr-'))`, run `AUDIVERIS_BIN -batch -transcribe -export -output <out> -- <input>`, find exactly one export, validate without external entities, then delete the workspace in `finally`.
-- [ ] **Step 4: Containerize/document.** Pin an Audiveris release, expose port 8080, set CORS to `https://pitch-perfect-ashen.vercel.app`, and document AGPL-3.0 notice, `SHEET_MUSIC_ENABLED`, `AUDIVERIS_BIN`, 256 MB RAM, and deployment as a container service—not Vercel.
+- [x] **Step 2: Run red.** Run `node --test services/omr/src/server.test.mjs`; expect missing-service failure.
+- [x] **Step 3: Implement green.** Use Fastify/Busboy limits `{ files: 1, fileSize: 10 * 1024 * 1024, fields: 0 }`. Return 404 when `SHEET_MUSIC_ENABLED !== 'true'`, 415 for unsupported MIME, 413 for oversize, 422 for invalid export, and 504 after 90 seconds. Create `mkdtemp(join(tmpdir(), 'perfect-pitch-omr-'))`, run `AUDIVERIS_BIN -batch -transcribe -export -output <out> -- <input>`, find exactly one export, validate without external entities, then delete the workspace in `finally`.
+- [x] **Step 4: Containerize/document.** Pin an Audiveris release, expose port 8080, set CORS to `https://pitch-perfect-ashen.vercel.app`, and document AGPL-3.0 notice, `SHEET_MUSIC_ENABLED`, `AUDIVERIS_BIN`, 256 MB RAM, and deployment as a container service—not Vercel.
 - [ ] **Step 5: Verify and commit.** Run `node --test services/omr/src/server.test.mjs`; then `git add services/omr && git commit -m "feat: add transient sheet recognition service"`.
 
 ### Task 6: Release verification
