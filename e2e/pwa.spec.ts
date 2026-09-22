@@ -66,6 +66,8 @@ test('serves a manifest the browser can install from', async () => {
   const manifest = await fetch(`${ORIGIN}/manifest.webmanifest`).then((r) => r.json());
 
   expect(manifest.name).toBe('Perfect Pitch');
+  // What a launcher prints under the icon, where there is room for less.
+  expect(manifest.short_name).toBe('Pitch Perfect');
   expect(manifest.display).toBe('standalone');
   expect(manifest.orientation).toBe('landscape');
   expect(manifest.start_url).toBe('/');
