@@ -39,6 +39,7 @@ export function Pages() {
           <NavLink
             key={page.to}
             to={page.to}
+            data-tour={page.to === '/notes' ? 'notes-tab' : undefined}
             end
             className={({ isActive }) =>
               `${

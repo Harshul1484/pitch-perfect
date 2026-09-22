@@ -18,6 +18,8 @@ interface SwaraKeyboardProps {
   onBar: () => void;
   onNewLine: () => void;
   onBackspace: () => void;
+  /** Names the keyboard for the walkthrough. */
+  tourId?: string;
 }
 
 const SAPTAKS = [
@@ -51,6 +53,7 @@ export function SwaraKeyboard({
   onBar,
   onNewLine,
   onBackspace,
+  tourId,
 }: SwaraKeyboardProps) {
   /*
    * The keys fill the width and cap their height. Square keys were tried both
@@ -60,7 +63,7 @@ export function SwaraKeyboard({
    * actions underneath.
    */
   return (
-    <div className="flex w-full shrink-0 flex-col gap-2 short:gap-1">
+    <div data-tour={tourId} className="flex w-full shrink-0 flex-col gap-2 short:gap-1">
       <div className="flex items-center justify-between">
         <span className="mono-label">{notation === 'western' ? 'notes' : 'swaras'}</span>
 

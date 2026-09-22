@@ -21,6 +21,9 @@ import { MetronomePanel } from '../components/metronome-panel';
 import { PracticeControl } from '../components/practice-control';
 import { RecordControl } from '../components/record-control';
 import { TunerColumn } from '../components/tuner-column';
+import { Tour } from '../components/tour';
+import { useTour } from '../hooks/use-tour';
+import { TUNER_STEPS, TUNER_TOUR } from '../lib/tour';
 
 /** How long a key stays depressed after being clicked. */
 const FLASH_MS = 260;
@@ -63,6 +66,9 @@ export function Dashboard() {
 
   const recorder = useRecorder(match, tolerance);
 
+  // Offered on a first visit; once taken or declined, not offered again.
+  const tour = useTour(TUNER_TOUR, TUNER_STEPS);
+
   /*
    * Where the readout column has room to spare, the controls live in it as a
    * panel rather than behind a button in the header. Rendered rather than
@@ -103,7 +109,9 @@ export function Dashboard() {
      * Height comes from the frame (#root) rather than the viewport, because on
      * a phone held upright that frame is the rotated one.
      */
-    <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
+    <div className="relative flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
+      <Tour tour={tour} label="show me around" />
+
       <header className="flex shrink-0 items-center justify-between gap-2 px-0.5">
         <Pages />
         {/*
@@ -138,6 +146,7 @@ export function Dashboard() {
               onDiscard={recorder.discard}
             />
             <PracticeControl
+              tourId="practice"
               on={practising}
               onToggle={() => setPractising((on) => !on)}
               holdMs={holdMs}

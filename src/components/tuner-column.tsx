@@ -44,7 +44,10 @@ export function TunerColumn({
   const tone = match === null ? 'text-engrave' : inTune ? 'text-intune' : 'text-signal';
 
   return (
-    <div className="keycap relative flex min-h-0 w-[170px] shrink-0 flex-1 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px] short:gap-1 short:p-1.5">
+    <div
+      data-tour="readout"
+      className="keycap relative flex min-h-0 w-[170px] shrink-0 flex-1 flex-col gap-3 bg-tile p-3 tall:w-[196px] narrow:w-[126px] short:gap-1 short:p-1.5"
+    >
       {/*
        * The note is the one thing you read with the instrument under your
        * chin, so where the screen has height to spare it is set large. Growing
@@ -135,6 +138,7 @@ export function TunerColumn({
 
         <button
           type="button"
+          data-tour="listen"
           onClick={live || starting ? onStop : onStart}
           disabled={starting}
           className={`keycap keycap-pressable flex h-10 items-center justify-center text-[13px] font-medium lowercase tracking-wide hover:border-engrave active:keycap-pressed disabled:cursor-wait short:h-8 short:text-[12px] ${
