@@ -1,102 +1,137 @@
-# pitch
+<div align="center">
+<br>
 
-Play your violin and the app tells you which note you are playing — and how in
-tune it is. The tile lights up green when you are within 10 cents, amber when
-you are not.
+<img src="public/icon-192.png" width="56" alt="">
 
-Tiles double as a soundboard: click one to hear the target pitch, then match it
-on the instrument.
+### Perfect Pitch
 
-## Getting started
+A violin tuner that tells you _how close_ you are,<br>
+and a notebook that remembers what you played.
+
+<br>
+
+[**Open**](https://pitch-perfect-ashen.vercel.app/) · Installable · Works offline
+
+<br>
+
+![](docs/screenshots/tuner.png)
+
+<br>
+</div>
+
+## Why
+
+A violin has no frets. Thirty cents flat is still recognisably C4, so a tuner
+that only names the note will call a bad note correct.
+
+The cents are the part worth having.
+
+<br>
+
+<div align="center">
+<img src="docs/screenshots/readout-flat.png" width="300" alt="">
+</div>
+
+<br>
+
+## Practice
+
+The bed stops being a readout and becomes a record. Green where you were in
+tune, red where you were not — a passage leaves a map of its own intonation.
+
+![](docs/screenshots/practice.png)
+
+<br>
+
+## Notes
+
+Write a piece in sargam or Western letters. Hear it back. Then practise
+against it — a note at a time, or a timed run that scores the whole thing.
+
+![](docs/screenshots/notes.png)
+
+<br>
+
+## Phone
+
+Nine octaves do not fit in a portrait column, so the page turns itself on its
+side. Install it and it opens with no network at all.
+
+<div align="center">
+<img src="docs/screenshots/phone.png" width="620" alt="">
+</div>
+
+<br>
+
+## Run it
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
-Press **Listen** and allow microphone access. The microphone needs HTTPS or
-localhost — `npm run dev` serves localhost, so it works out of the box.
+Press **listen** and allow the microphone.
 
-## Why cents matter
+Notes need Firebase — copy `.env.example` to `.env.local`. Without it the
+tuner still runs; only signing in is unavailable.
 
-A violin has no frets, so a note 30 cents flat is still recognisably "C4". An
-app that only named the note would call a badly out-of-tune note correct. The
-cents readout is the part worth having.
+<br>
 
-The full 88-key grid stays visible rather than narrowing to the standard violin
-range, because scordatura tunings — DADA, FEFE, other cross-tunings — move the
-reachable range around.
+|                 |                         |
+| --------------- | ----------------------- |
+| `bun run dev`   | dev server              |
+| `bun run build` | typecheck, then build   |
+| `bun run test`  | unit tests              |
+| `bun run e2e`   | Playwright, real Chrome |
+| `bun run lint`  | ESLint                  |
 
-## How it works
+End-to-end tests for notes need `firebase emulators:start`.
 
-Frequencies come from one equal-temperament formula in `src/lib/notes.ts`,
-anchored at A4 = 440 Hz:
+<br>
+
+## How
+
+**Pitch** — one equal-temperament formula, anchored at A4 = 440 Hz.
 
 ```
 frequency(midi) = 440 * 2 ** ((midi - 69) / 12)
 ```
 
-Detection (`src/lib/pitch.ts`) uses the McLeod Pitch Method: it builds a
-Normalised Square Difference Function and takes the first strong peak rather
-than the tallest. That is what stops a bowed string's loud harmonics from
-being reported an octave high.
+**Detection** — the McLeod Pitch Method: the first strong peak of a Normalised
+Square Difference Function, not the tallest. That is what stops a bowed
+string's harmonics reading an octave high. Echo cancellation, noise
+suppression and gain control are all off; each one mangles a sustained tone.
 
-**One note at a time.** Double stops will read as one note or waver between
-the two — inherent to monophonic detection.
+One note at a time. Double stops waver between the two.
 
-Capture runs with `echoCancellation`, `noiseSuppression` and `autoGainControl`
-all off. Each of them mangles a sustained tone.
+**Offline** — precache the build, hashed assets cache-first, navigations
+network-first with the cached shell behind them. A Vite plugin stamps the file
+list in at build, so it cannot drift.
 
-## Scripts
+<br>
 
-| Script | Does |
-|---|---|
-| `npm run dev` | Vite dev server with HMR |
-| `npm run build` | Typecheck, then production build to `dist/` |
-| `npm run preview` | Serve the built output locally |
-| `npm test` | Vitest unit tests |
-| `npm run test:watch` | Vitest in watch mode |
-| `npm run e2e` | Playwright tests in real Chrome |
-| `npm run lint` | ESLint over the repo |
-| `npm run format` | Prettier, write mode |
-| `npm run typecheck` | `tsc --noEmit` |
+## Built with
 
-## Testing
+Vite · React 19 · TypeScript · Tailwind 4 · Firebase · Vitest · Playwright
 
-Unit tests drive the detector with synthesised tones and assert accuracy in
-cents, including a guard against the octave error.
+No audio, charting or PWA library. Detection, synthesis, metronome scheduling
+and the service worker are all first-party.
 
-End-to-end tests run in real Chrome with a persistent profile, replacing
-`getUserMedia` with a Web Audio oscillator at a known pitch. Chrome's own
-`--use-file-for-fake-audio-capture` was tried first and abandoned: it rendered
-WAV fixtures so poorly that clarity sat at 0.2–0.3, testing Chrome's audio
-plumbing rather than this app.
-
-## Stack
-
-Vite 8 · React 19 · TypeScript 6 · React Router 8 · Tailwind CSS 4 ·
-Vitest 5 + Testing Library · Playwright · ESLint 10 · Prettier 3
-
-TypeScript is pinned to 6.0.3 rather than 7.x because `typescript-eslint`
-peers on `>=4.8.4 <6.1.0`.
-
-## Layout
+<br>
 
 ```
 src/
-├─ lib/
-│  ├─ notes.ts    # pitch math, the note table, frequency to note
-│  ├─ audio.ts    # reference tone playback
-│  └─ pitch.ts    # microphone pitch detection (MPM)
-├─ hooks/
-│  └─ use-pitch-detection.ts   # microphone lifecycle
-├─ components/    # note tile, octave row, readout, cents meter
-└─ routes/
-   └─ dashboard.tsx
+├─ lib/          pitch, notation, practice, scoring
+├─ hooks/        microphone, preferences, Firestore, install
+├─ components/   key bed, readout, meter, editor
+├─ routes/       tuner · notes
+└─ sw.js         offline
 ```
 
-## Design notes
+<br>
 
-See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design specs,
-including measured threshold data and the reasoning behind the detection
-algorithm.
+<div align="center">
+
+[Design specs](docs/superpowers/specs/)
+
+</div>
