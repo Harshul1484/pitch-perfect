@@ -1,5 +1,7 @@
 import { chromium, expect, test, type Page } from '@playwright/test';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /**
  * The installed app: a manifest the browser accepts, a worker that keeps the
@@ -64,6 +66,8 @@ test('serves a manifest the browser can install from', async () => {
   const manifest = await fetch(`${ORIGIN}/manifest.webmanifest`).then((r) => r.json());
 
   expect(manifest.name).toBe('Perfect Pitch');
+  // What a launcher prints under the icon, where there is room for less.
+  expect(manifest.short_name).toBe('Pitch Perfect');
   expect(manifest.display).toBe('standalone');
   expect(manifest.orientation).toBe('landscape');
   expect(manifest.start_url).toBe('/');
@@ -171,4 +175,97 @@ test('offers to install when the browser does, and opens its dialog', async () =
   await expect(page.getByRole('button', { name: 'install' })).toHaveCount(0);
 
   await context.close();
+});
+
+/**
+ * A deploy landing under a session that is still open.
+ *
+ * Rather than build twice, the served worker is rewritten with a different
+ * version — which is exactly what a new build looks like to the browser: the
+ * bytes at /sw.js differ, so it installs a second worker, which then waits.
+ */
+const SW = 'dist/sw.js';
+
+test('a deploy that lands mid-session offers itself rather than taking over', async () => {
+  test.setTimeout(150_000);
+
+  // Its own profile, wiped first. This test installs a second worker, and a
+  // profile carried over from a previous run starts with one already in the
+  // waiting slot — which is the very thing the first assertion denies.
+  const profile = resolve('.e2e-profile', 'pwa-update');
+  rmSync(profile, { recursive: true, force: true });
+  mkdirSync(profile, { recursive: true });
+  const context = await chromium.launchPersistentContext(profile, { channel: 'chrome' });
+  const page = await context.newPage();
+
+  await page.goto(ORIGIN);
+  await expect(page.getByRole('button', { name: 'listen' })).toBeVisible();
+  await controlled(page);
+
+  // Nothing to announce while this is the newest build.
+  await expect(page.getByRole('button', { name: /^updat/ })).toHaveCount(0);
+
+  const original = readFileSync(SW, 'utf8');
+  try {
+    writeFileSync(
+      SW,
+      original.replace(/const VERSION = "[a-f0-9]+"/, 'const VERSION = "0000deadbeef"'),
+    );
+
+    await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      await registration!.update();
+    });
+
+    // The cap appears, and the page is still being served by the old build.
+    // Installing a build takes as long as it takes, and this suite runs a
+    // browser per test before it gets here.
+    const cap = page.getByRole('button', { name: 'update' });
+    await expect(cap).toBeVisible({ timeout: 60_000 });
+
+    // Installed, but still waiting: the old worker is the one in charge.
+    // The new cache exists — install fills it — so what proves it has not
+    // taken over is that the previous build's cache is still there and a
+    // worker is sitting in the waiting slot.
+    const state = await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      return {
+        waiting: registration?.waiting !== null,
+        caches: (await caches.keys()).length,
+      };
+    });
+    expect(state.waiting, 'a newer worker should be waiting').toBe(true);
+    expect(state.caches, 'both builds cached while the old one is in charge').toBe(2);
+
+    // Taking it hands over and reloads.
+    await cap.click();
+    await page.waitForLoadState('load');
+    await expect(page.getByRole('button', { name: 'listen' })).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const keys = await caches.keys();
+            return keys.some((key) => key.includes('0000deadbeef'));
+          }),
+        { timeout: 20_000, message: 'the new build should be the one in charge now' },
+      )
+      .toBe(true);
+
+    // And the old build's cache is gone, which is why it had to wait.
+    await expect
+      .poll(() => page.evaluate(async () => (await caches.keys()).length), {
+        timeout: 20_000,
+        message: 'the previous build cache should be swept up on activation',
+      })
+      .toBe(1);
+
+    await expect(page.getByRole('button', { name: /^updat/ })).toHaveCount(0);
+  } finally {
+    writeFileSync(SW, original);
+    await context.close();
+  }
 });

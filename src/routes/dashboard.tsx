@@ -12,6 +12,7 @@ import { useMedia } from '../hooks/use-media';
 import type { Notation } from '../lib/notation';
 import { AccountControl } from '../components/account-control';
 import { InstallControl } from '../components/install-control';
+import { UpdateControl } from '../components/update-control';
 import { ControlsPanel, ControlsPopover } from '../components/controls-popover';
 import { Keybed } from '../components/keybed';
 import { Pages } from '../components/pages';
@@ -166,7 +167,10 @@ export function Dashboard() {
             </>
           )}
           <span aria-hidden="true" className="h-4 w-px bg-hairline narrow:hidden" />
-          {/* Only while the app can be installed from here; gone once it is. */}
+          {/* Both are there only when they are relevant: install until the
+              app is installed, update only after a deploy has landed under
+              a session that is still open. */}
+          <UpdateControl />
           <InstallControl />
           <AccountControl {...auth} />
         </div>
