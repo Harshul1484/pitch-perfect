@@ -22,14 +22,28 @@ const WIDTH = {
   lg: 'w-[4px]',
 };
 
-export function Mark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+export function Mark({
+  size = 'md',
+  tone = 'ink',
+}: {
+  size?: 'sm' | 'md' | 'lg';
+  /**
+   * Which ground it is standing on. The two quiet bars are the ink of the
+   * page, so on a dark one they disappear and leave the red bar looking
+   * like a stray line — which is exactly what happened the first time this
+   * was put on the walkthrough's offer.
+   */
+  tone?: 'ink' | 'paper';
+}) {
+  const quiet = tone === 'paper' ? 'bg-panel' : 'bg-graphite';
+
   return (
     <span aria-hidden="true" className="flex shrink-0 items-end gap-[2px]">
       {BARS[size].map((height, index) => (
         <span
           key={height}
           className={`rounded-[1px] ${height} ${WIDTH[size]} ${
-            index === 2 ? 'bg-signal' : 'bg-graphite'
+            index === 2 ? 'bg-signal' : quiet
           }`}
         />
       ))}

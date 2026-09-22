@@ -2,12 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   placePanel,
   rectToLocal,
+  contain,
   spotlight,
   type Basis,
   type Rect,
   type Side,
 } from '../lib/tour';
 import type { Tour as TourState } from '../hooks/use-tour';
+import { Mark } from './mark';
 
 /* Hover lives on the off state only — see the note in routes/notes.tsx. */
 const KEY = 'keycap keycap-pressable active:keycap-pressed';
@@ -71,7 +73,7 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
         return;
       }
 
-      const lit = spotlight(local(tour.target.getBoundingClientRect()));
+      const lit = contain(spotlight(local(tour.target.getBoundingClientRect())), size);
       setHole(lit);
 
       /*
@@ -93,8 +95,40 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
     };
 
     measure();
+
+    /*
+     * Measured again whenever the page moves under it. The panel used to be
+     * placed once per step, so anything that shifted afterwards — the meter
+     * appearing, the status line changing width — left it sitting over the
+     * control it was pointing at.
+     */
+    const watch = new ResizeObserver(measure);
+    if (tour.target) watch.observe(tour.target);
+    if (origin.current?.parentElement) watch.observe(origin.current.parentElement);
+
+    /*
+     * The panel is watched too, because it is placed by its top left and
+     * grows downward. A panel measured before the mono font has loaded is
+     * shorter than the one that ends up on screen, and one placed above its
+     * target then grows straight down over the thing it is pointing at.
+     */
+    if (panelRef.current) watch.observe(panelRef.current);
+
+    /*
+     * And again once the fonts have arrived. The body is set in the mono
+     * face; measured against the fallback it wraps a line shorter, which
+     * placed the panel a line too low and left it growing over the control
+     * it was pointing at the moment the real face landed.
+     */
+    void document.fonts?.ready.then(measure);
+
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      watch.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
   }, [tour.status, tour.target, tour.step]);
 
   // Keyboard: the arrows walk it, Escape leaves.
@@ -137,17 +171,46 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
   );
 
   if (tour.status === 'offered') {
+    /*
+     * Dark, on a page that is entirely light.
+     *
+     * The first version of this was a panel in the app's own colours, which
+     * made it invisible: everything here is a pale tile with a hairline
+     * around it, so one more pale tile reads as part of the furniture. There
+     * are no drop shadows in this system to lift it with, so it is lifted by
+     * inverting instead — and it carries the mark, so what is speaking is
+     * obvious before the words are read.
+     */
     return (
-      <div className="pointer-events-none absolute inset-0 z-40 flex items-end justify-center p-4">
-        <div className="keycap pointer-events-auto flex items-center gap-3 bg-tile px-3 py-2 shadow-sm">
-          <span className="mono-label normal-case">First time here?</span>
-          <button type="button" onClick={tour.take} className={`${KEY_ON} ${CAP}`}>
+      <div
+        data-tour-offer=""
+        className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center p-5"
+      >
+        {/*
+         * The bar itself takes no clicks — only its two buttons do.
+         *
+         * It floats over the bottom of the app, which on this page is a key
+         * bed and on the notebook is whatever popover you have just opened.
+         * A bar that swallowed the clicks that landed on it made the first
+         * thing a new player pressed do nothing at all, which is a poor
+         * introduction from something offering to help.
+         */}
+        <div className="tour-rise flex items-center gap-3 rounded-[4px] border border-graphite bg-graphite py-2 pl-3 pr-2 text-panel">
+          <Mark size="sm" tone="paper" />
+          <span className="font-mono text-[11px] tracking-[0.06em] text-panel">
+            First time here?
+          </span>
+          <button
+            type="button"
+            onClick={tour.take}
+            className={`${CAP} pointer-events-auto keycap keycap-pressable border-panel bg-panel bg-none font-medium text-graphite hover:bg-white active:keycap-pressed`}
+          >
             {label}
           </button>
           <button
             type="button"
             onClick={tour.finish}
-            className={`${KEY_OFF} ${CAP} text-engrave`}
+            className={`${CAP} pointer-events-auto rounded-[4px] border border-transparent text-panel/70 hover:text-panel`}
           >
             no thanks
           </button>
@@ -159,6 +222,30 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
   const step = tour.step;
   if (!step || !frame) return <div className="absolute inset-0">{probes}</div>;
 
+  /*
+   * Everywhere the walkthrough is holding onto clicks: the whole frame,
+   * or the four bands around the lit control when the step wants it pressed.
+   */
+  const open = step.interactive && hole ? hole : null;
+  const catchers: Rect[] = open
+    ? [
+        { x: 0, y: 0, width: frame.width, height: Math.max(open.y, 0) },
+        {
+          x: 0,
+          y: open.y + open.height,
+          width: frame.width,
+          height: Math.max(frame.height - (open.y + open.height), 0),
+        },
+        { x: 0, y: open.y, width: Math.max(open.x, 0), height: open.height },
+        {
+          x: open.x + open.width,
+          y: open.y,
+          width: Math.max(frame.width - (open.x + open.width), 0),
+          height: open.height,
+        },
+      ]
+    : [{ x: 0, y: 0, width: frame.width, height: frame.height }];
+
   const placed = at ?? {
     x: frame.width / 2 - PANEL.width / 2,
     y: frame.height / 2 - PANEL.height / 2,
@@ -166,12 +253,30 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
   };
 
   return (
-    <div className="absolute inset-0 z-40">
+    /*
+     * Nothing here catches a click unless it says so. The overlay used to
+     * be one hit-testable sheet, which meant a step could ask you to press a
+     * control and then quietly eat the press.
+     */
+    <div className="pointer-events-none absolute inset-0 z-40">
       {probes}
 
-      {/* Catches every click, so the app cannot be worked from under the
-          walkthrough while it is explaining itself. */}
-      <div aria-hidden="true" className="absolute inset-0" />
+      {/*
+       * Catches the clicks, so the app cannot be worked from under the
+       * walkthrough while it is explaining itself — except for the one
+       * control a step has asked you to press, which is left uncovered by
+       * fencing it off with four panes instead of one sheet. They are
+       * invisible; the dimming is the shadow below, which is why the pale
+       * corners that four *visible* panes used to leave do not come back.
+       */}
+      {catchers.map((pane, index) => (
+        <div
+          key={index}
+          aria-hidden="true"
+          className="pointer-events-auto absolute"
+          style={{ left: pane.x, top: pane.y, width: pane.width, height: pane.height }}
+        />
+      ))}
 
       {hole ? (
         /*
@@ -182,7 +287,9 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
          */
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute rounded-[5px] border-2 border-signal shadow-[0_0_0_9999px_rgb(43_43_43/0.5)]"
+          className={`pointer-events-none absolute rounded-[5px] border-2 border-signal shadow-[0_0_0_9999px_rgb(43_43_43/0.5)] ${
+            step.interactive ? 'tour-beckon' : ''
+          }`}
           style={{ left: hole.x, top: hole.y, width: hole.width, height: hole.height }}
         />
       ) : (
@@ -195,7 +302,7 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
         aria-modal="true"
         aria-label={step.title}
         tabIndex={-1}
-        className="keycap absolute flex flex-col gap-2.5 bg-tile p-4 outline-none"
+        className="keycap pointer-events-auto absolute flex flex-col gap-2.5 bg-tile p-4 outline-none"
         style={{ left: placed.x, top: placed.y, width: PANEL.width }}
       >
         <div className="flex items-center justify-between gap-2">
@@ -211,9 +318,15 @@ export function Tour({ tour, label }: { tour: TourState; label: string }) {
           </button>
         </div>
 
-        <h2 className="text-[15px] font-semibold leading-tight tracking-[-0.01em]">
-          {step.title}
-        </h2>
+        {/* The opening step names the app, so it is signed. The steps after
+            it are about one control each and the mark would only be
+            furniture repeated five times. */}
+        <div className="flex items-center gap-2">
+          {!step.target && <Mark size="md" />}
+          <h2 className="text-[15px] font-semibold leading-tight tracking-[-0.01em]">
+            {step.title}
+          </h2>
+        </div>
         <p className="font-mono text-[11px] leading-[1.6] text-graphite/85">
           {step.body}
         </p>

@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import type { Step } from '../lib/tour';
 
 /**
@@ -78,7 +78,7 @@ export interface Tour {
   finish: () => void;
 }
 
-type Phase = 'waiting' | 'running' | 'over';
+type Phase = 'waiting' | 'running' | 'aside' | 'over';
 
 /**
  * One walkthrough.
@@ -109,6 +109,27 @@ export function useTour(
       : phase === 'waiting' && ready && !wasSeen
         ? 'offered'
         : 'idle';
+
+  /*
+   * The offer steps aside as soon as you start using the app yourself.
+   *
+   * It is an invitation, not a notice to be dismissed, and someone who has
+   * begun pressing things has answered it. It is not remembered as seen:
+   * having ignored it once is not the same as having declined it, so it is
+   * offered again next visit — and the account menu has it either way.
+   */
+  useEffect(() => {
+    if (status !== 'offered') return;
+
+    const aside = (event: PointerEvent) => {
+      const inside =
+        event.target instanceof Element && event.target.closest('[data-tour-offer]');
+      if (!inside) setPhase('aside');
+    };
+
+    document.addEventListener('pointerdown', aside, true);
+    return () => document.removeEventListener('pointerdown', aside, true);
+  }, [status]);
 
   const take = useCallback(() => {
     /*

@@ -33,6 +33,15 @@ export interface Step {
   target?: string;
   title: string;
   body: string;
+  /**
+   * Whether the thing being pointed at can be pressed while the step is up.
+   *
+   * Off by default: the walkthrough dims the page and holds onto the clicks
+   * so the app cannot be worked from underneath it. A step that asks you to
+   * do something has to hand that one control back, or it is telling you to
+   * press a button it is also blocking.
+   */
+  interactive?: boolean;
 }
 
 /**
@@ -52,6 +61,7 @@ export const TUNER_STEPS: Step[] = [
   {
     id: 'listen',
     target: 'listen',
+    interactive: true,
     title: 'Start here',
     body: 'Press listen and allow the microphone. Then play a note — the app works out which one it is and how far off you are.',
   },
@@ -64,12 +74,14 @@ export const TUNER_STEPS: Step[] = [
   {
     id: 'bed',
     target: 'bed',
+    interactive: true,
     title: 'Every octave, and a reference tone',
     body: 'Your note lights up here. Click any key to hear the pitch you are aiming at. All 88 are shown, because scordatura tunings move where your strings sit.',
   },
   {
     id: 'practice',
     target: 'practice',
+    interactive: true,
     title: 'Practice remembers',
     body: 'Switch this on and the keys keep what you played — green where you were in tune, red where you were not. A passage leaves a map of its own intonation.',
   },
@@ -93,6 +105,7 @@ export const NOTES_STEPS: Step[] = [
   {
     id: 'create',
     target: 'new',
+    interactive: true,
     title: 'Start a piece',
     body: 'Press new. Everything you write is saved to your account and follows you between devices — the tuner works without one, this does not.',
   },
@@ -105,6 +118,7 @@ export const NOTES_STEPS: Step[] = [
   {
     id: 'writing',
     target: 'keyboard',
+    interactive: true,
     title: 'Write it as you say it',
     body: 'Tap the swaras, or type their letters: S R G m P. Bars, holds and notes tied into one beat are on the row underneath.',
   },
@@ -173,13 +187,51 @@ export function rectToLocal(basis: Basis, rect: Rect): Rect {
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
+/**
+ * How far the ring stands off whatever it is lighting.
+ *
+ * One number, used twice: the hole is opened this much wider than its
+ * target, and held this far inside the window. Two numbers meant the gap
+ * was even on the sides with room and tighter on the sides without, which
+ * on the key bed — wider and taller than the window it scrolls inside —
+ * showed as a ring that was loose at the top left and pinched at the
+ * bottom right.
+ */
+export const GAP = 8;
+
 /** The hole, a little larger than the thing it is around. */
-export function spotlight(target: Rect, padding = 8): Rect {
+export function spotlight(target: Rect, padding = GAP): Rect {
   return {
     x: target.x - padding,
     y: target.y - padding,
     width: target.width + padding * 2,
     height: target.height + padding * 2,
+  };
+}
+
+/**
+ * The hole pulled back inside the window, ring and all.
+ *
+ * Two things push it out. The padding above widens it past anything sitting
+ * flush against an edge, and the key bed is wider and taller than the window
+ * it scrolls inside, so its rectangle genuinely runs off both. Either way
+ * the border is drawn where it cannot be seen, and a spotlight missing two
+ * of its four sides reads as a rendering fault rather than a highlight.
+ *
+ * The margin matches the padding, so a ring that has been pulled in sits
+ * the same distance from the window as it would have sat from its target.
+ */
+export function contain(rect: Rect, frame: Size, margin = GAP): Rect {
+  const left = Math.max(rect.x, margin);
+  const top = Math.max(rect.y, margin);
+  const right = Math.min(rect.x + rect.width, frame.width - margin);
+  const bottom = Math.min(rect.y + rect.height, frame.height - margin);
+
+  return {
+    x: Math.min(left, right),
+    y: Math.min(top, bottom),
+    width: Math.max(right - left, 0),
+    height: Math.max(bottom - top, 0),
   };
 }
 

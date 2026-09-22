@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   NOTES_STEPS,
+  GAP,
   TUNER_STEPS,
+  contain,
   placePanel,
   rectToLocal,
   spotlight,
@@ -10,7 +12,11 @@ import {
 } from './tour';
 
 /** The frame untransformed: its axes are the window's own. */
-const plain: Basis = { origin: { x: 0, y: 0 }, unitX: { x: 1, y: 0 }, unitY: { x: 0, y: 1 } };
+const plain: Basis = {
+  origin: { x: 0, y: 0 },
+  unitX: { x: 1, y: 0 },
+  unitY: { x: 0, y: 1 },
+};
 
 /**
  * The frame as a phone rotates it: ninety degrees, so the frame's x runs down
@@ -43,7 +49,11 @@ describe('toLocal', () => {
   it('falls back to a plain offset when the axes are degenerate', () => {
     // A frame scaled to nothing has no usable axes; better an approximate
     // answer than a division by zero.
-    const flat: Basis = { origin: { x: 5, y: 5 }, unitX: { x: 0, y: 0 }, unitY: { x: 0, y: 0 } };
+    const flat: Basis = {
+      origin: { x: 5, y: 5 },
+      unitX: { x: 0, y: 0 },
+      unitY: { x: 0, y: 0 },
+    };
     expect(toLocal(flat, { x: 15, y: 25 })).toEqual({ x: 10, y: 20 });
   });
 });
@@ -75,6 +85,54 @@ describe('spotlight', () => {
       width: 56,
       height: 36,
     });
+  });
+});
+
+describe('contain', () => {
+  const frame = { width: 1000, height: 600 };
+
+  it('holds the ring as far off the window as it stands off a target', () => {
+    // What the eye reads is the gap. One that is 8px at the top left and
+    // 3px at the bottom right looks like a mistake, because it is one.
+    const held = contain(spotlight({ x: 100, y: 100, width: 2000, height: 2000 }), frame);
+
+    // The sides with room keep their gap from the target; the sides
+    // without are held the same distance off the window instead.
+    expect(held.x).toBe(100 - GAP);
+    expect(held.y).toBe(100 - GAP);
+    expect(frame.width - (held.x + held.width)).toBe(GAP);
+    expect(frame.height - (held.y + held.height)).toBe(GAP);
+  });
+
+  it('leaves a rectangle with room to spare alone', () => {
+    expect(contain({ x: 100, y: 100, width: 200, height: 100 }, frame)).toEqual({
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 100,
+    });
+  });
+
+  it('pulls a hole off the edges so its border can be seen', () => {
+    // The key bed runs off the window on both sides; its ring has to come
+    // back to where there are pixels to draw it on.
+    const held = contain({ x: -20, y: -20, width: 1100, height: 700 }, frame);
+
+    expect(held.x).toBe(GAP);
+    expect(held.y).toBe(GAP);
+    expect(held.x + held.width).toBe(frame.width - GAP);
+    expect(held.y + held.height).toBe(frame.height - GAP);
+  });
+
+  it('never turns a rectangle inside out', () => {
+    // Something scrolled entirely off the window has no visible part, and a
+    // negative width would paint a ring across the whole page.
+    const gone = contain({ x: 1400, y: 900, width: 50, height: 50 }, frame);
+
+    expect(gone.width).toBe(0);
+    expect(gone.height).toBe(0);
+    expect(gone.x).toBeGreaterThanOrEqual(0);
+    expect(gone.y).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -118,8 +176,12 @@ describe('placePanel', () => {
       const at = placePanel(target, panel, viewport);
       expect(at.x, JSON.stringify(target)).toBeGreaterThanOrEqual(0);
       expect(at.y, JSON.stringify(target)).toBeGreaterThanOrEqual(0);
-      expect(at.x + panel.width, JSON.stringify(target)).toBeLessThanOrEqual(viewport.width);
-      expect(at.y + panel.height, JSON.stringify(target)).toBeLessThanOrEqual(viewport.height);
+      expect(at.x + panel.width, JSON.stringify(target)).toBeLessThanOrEqual(
+        viewport.width,
+      );
+      expect(at.y + panel.height, JSON.stringify(target)).toBeLessThanOrEqual(
+        viewport.height,
+      );
     }
   });
 
@@ -154,5 +216,27 @@ describe('the steps themselves', () => {
 
   it('opens the tuner tour without pointing at anything', () => {
     expect(TUNER_STEPS[0].target).toBeUndefined();
+  });
+
+  it('lets you press what a step tells you to press', () => {
+    // Every way a step has of telling you to do something to the thing it
+    // is pointing at. A step that says one of these and then holds onto the
+    // click is worse than no step at all, and the only thing standing
+    // between the two is this flag.
+    const tells = /\b(press|click|tap|switch this on)\b/i;
+
+    for (const step of all) {
+      if (!tells.test(step.body)) continue;
+      expect(step.target, step.id).toBeDefined();
+      expect(step.interactive, step.id).toBe(true);
+    }
+  });
+
+  it('never opens a hole around nothing', () => {
+    // Interactive means "leave this control uncovered", which needs a
+    // control to leave uncovered.
+    for (const step of all.filter((s) => s.interactive)) {
+      expect(step.target, step.id).toBeDefined();
+    }
   });
 });
