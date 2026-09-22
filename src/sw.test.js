@@ -88,13 +88,33 @@ describe('the service worker', () => {
     await import('./sw.js');
   });
 
-  it('precaches the build at install and takes over at once', async () => {
+  it('precaches the build at install', async () => {
     await dispatch(handlers.install, null);
 
     const [name, cache] = Array.from(caches.entries())[0];
     expect(name).toMatch(/^perfect-pitch-/);
     expect(cache.addAll).toHaveBeenCalledTimes(1);
-    expect(world.skipWaiting).toHaveBeenCalled();
+  });
+
+  it('waits rather than taking over a page still running the old build', async () => {
+    // Taking over deletes the previous build's cache, and a page served by
+    // that build still needs it for any route it has not opened yet.
+    await dispatch(handlers.install, null);
+
+    expect(world.skipWaiting).not.toHaveBeenCalled();
+  });
+
+  it('takes over when a page asks it to, and not for any other message', async () => {
+    await dispatch(handlers.install, null);
+
+    await handlers.message({ data: { type: 'something-else' } });
+    expect(world.skipWaiting).not.toHaveBeenCalled();
+
+    await handlers.message({ data: null });
+    expect(world.skipWaiting).not.toHaveBeenCalled();
+
+    await handlers.message({ data: { type: 'skip-waiting' } });
+    expect(world.skipWaiting).toHaveBeenCalledTimes(1);
   });
 
   it('removes older caches of its own at activate, and no one else’s', async () => {

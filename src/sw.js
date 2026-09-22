@@ -15,7 +15,7 @@
  *
  * The version and the file list are stamped in by the build (see the plugin
  * in vite.config.ts). A new build is a new cache; the old one is removed when
- * the new worker takes over.
+ * the new worker takes over, which it does only when a page asks it to.
  *
  * Written against `self.` throughout, rather than the bare globals a worker
  * also has, so that a test can hand it one object and watch what it does.
@@ -40,14 +40,21 @@ const SHELL = '/index.html';
 const MATCH = { ignoreVary: true };
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    self.caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      // Take over from any older worker as soon as this one is ready, rather
-      // than waiting for every tab to close.
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil(self.caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
+});
+
+/*
+ * A new worker waits until it is asked to take over.
+ *
+ * It must not take over on its own. Activating deletes the previous build's
+ * cache, and a page that is still open was served by that build: the moment
+ * it lazily imports a route it has not opened yet, it asks for a file named
+ * with the old build's hash — gone from the cache, and gone from the server
+ * too. So the page is told an update is ready and decides when to take it,
+ * which it does by reloading immediately afterwards.
+ */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'skip-waiting') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
