@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { resetTours } from '../hooks/use-tour';
+import { NOTES_TOUR, TUNER_TOUR } from '../lib/tour';
 import type { AuthState } from '../hooks/use-auth';
 
 /** First initial, for the avatar when Google gives us no photo. */
@@ -105,6 +107,20 @@ export function AccountControl({ status, user, error, signIn, signOut }: AuthSta
             )}
 
             <span aria-hidden="true" className="h-px w-full bg-hairline-soft" />
+
+            {/* People skip the walkthrough and then want it back. Without a
+                way to ask for it again, the only route is clearing site
+                data. */}
+            <button
+              type="button"
+              onClick={() => {
+                resetTours([TUNER_TOUR, NOTES_TOUR]);
+                window.location.reload();
+              }}
+              className={`${KEY_OFF} px-2.5 py-1.5 font-mono text-[10px] lowercase tracking-[0.08em] text-engrave`}
+            >
+              show me around again
+            </button>
 
             <button
               type="button"

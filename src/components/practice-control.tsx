@@ -12,6 +12,8 @@ interface PracticeControlProps {
   marked: number;
   /** The notes page adds its stage and score here. */
   children?: ReactNode;
+  /** Names this control for the walkthrough, which differs per page. */
+  tourId?: string;
 }
 
 /*
@@ -37,6 +39,7 @@ export function PracticeControl({
   onReset,
   marked,
   children,
+  tourId,
 }: PracticeControlProps) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -69,7 +72,10 @@ export function PracticeControl({
        * a single outline with a hairline between the halves — the same shape
        * the account control has, which is also a label with a caret.
        */}
-      <div className="keycap flex h-7 items-stretch hover:border-engrave short:h-6">
+      <div
+        data-tour={tourId}
+        className="keycap flex h-7 items-stretch hover:border-engrave short:h-6"
+      >
         <button
           type="button"
           onClick={onToggle}

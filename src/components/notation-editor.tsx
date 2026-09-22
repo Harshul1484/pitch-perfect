@@ -127,11 +127,7 @@ export function NotationEditor({
   const [tie, setTie] = useState(false);
   const [bpm, setBpm] = useState(80);
   // Read only: both of these are set on the tuner and shared by the app.
-  const [notation] = usePreference<Notation>(
-    'pitch.notation',
-    'western',
-    NOTATIONS,
-  );
+  const [notation] = usePreference<Notation>('pitch.notation', 'western', NOTATIONS);
   const [voice] = usePreference<Voice>('pitch.voice', 'violin', VOICES);
   const [dirty, setDirty] = useState(false);
 
@@ -483,6 +479,7 @@ export function NotationEditor({
       <div className="flex flex-wrap items-center gap-2 border-t border-hairline-soft pt-2 short:gap-1.5 short:pt-1.5">
         <button
           type="button"
+          data-tour="play"
           onClick={playback.isPlaying ? playback.stop : playback.play}
           aria-pressed={playback.isPlaying}
           className={`${
@@ -530,6 +527,7 @@ export function NotationEditor({
         </label>
 
         <PracticeControl
+          tourId="piece-practice"
           on={practising}
           onToggle={() => {
             setPractising((on) => !on);
@@ -638,14 +636,13 @@ export function NotationEditor({
             detectedCents={match?.cents ?? null}
             tolerance={tolerance}
             marks={practice.marks}
-            targetMidi={
-              stage === 'learn' ? (targets[reached]?.midi ?? null) : null
-            }
+            targetMidi={stage === 'learn' ? (targets[reached]?.midi ?? null) : null}
             octaves={octavesOf(targets, match?.note.midi ?? null)}
           />
         </div>
       ) : (
         <SwaraKeyboard
+          tourId="keyboard"
           saptak={saptak}
           onSaptakChange={setSaptak}
           notation={notation}
@@ -680,7 +677,10 @@ function octavesOf(
   targets: { midi: number }[],
   heard: number | null,
 ): { from: number; to: number } {
-  const midis = [...targets.map((target) => target.midi), ...(heard === null ? [] : [heard])];
+  const midis = [
+    ...targets.map((target) => target.midi),
+    ...(heard === null ? [] : [heard]),
+  ];
   if (midis.length === 0) return { from: 3, to: 5 };
 
   const octave = (midi: number) => Math.floor(midi / 12) - 1;

@@ -9,6 +9,9 @@ import { usePitchDetection } from '../hooks/use-pitch-detection';
 import { Mark } from '../components/mark';
 import { Pages } from '../components/pages';
 import { nearestNote } from '../lib/notes';
+import { Tour } from '../components/tour';
+import { useTour, type Tour as TourState } from '../hooks/use-tour';
+import { NOTES_STEPS, NOTES_TOUR } from '../lib/tour';
 
 /*
  * Hover styling belongs to the off state, never alongside the on state.
@@ -39,10 +42,16 @@ export function Notes() {
     [store.items, selectedId],
   );
 
+  const tour = useTour(NOTES_TOUR, NOTES_STEPS, auth.status === 'signed-in');
+
   const createPiece = useCallback(async () => {
     const id = await store.create('Untitled', 0);
-    if (id) setSelectedId(id);
-  }, [store]);
+    if (!id) return;
+    setSelectedId(id);
+
+    // The walkthrough asked for this; pressing it is how that step is done.
+    if (tour.status === 'running' && tour.step?.id === 'create') tour.next();
+  }, [store, tour]);
 
   if (auth.status === 'loading') {
     return (
@@ -63,13 +72,22 @@ export function Notes() {
   }
 
   return (
-    <Shell auth={auth} listening={listening} onListen={listening ? stop : start}>
+    <Shell
+      auth={auth}
+      listening={listening}
+      onListen={listening ? stop : start}
+      tour={tour}
+    >
       <div className="flex min-h-0 flex-1 gap-2.5 short:gap-1.5">
-        <aside className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 narrow:w-[132px] short:gap-1.5 short:p-2">
+        <aside
+          data-tour="pieces"
+          className="keycap flex w-[210px] shrink-0 flex-col gap-2 bg-tile p-3 narrow:w-[132px] short:gap-1.5 short:p-2"
+        >
           <div className="flex items-center justify-between">
             <span className="mono-label">pieces</span>
             <button
               type="button"
+              data-tour="new"
               onClick={() => void createPiece()}
               className={`${KEY_OFF} px-2 py-1 font-mono text-[10px] lowercase tracking-[0.08em]`}
             >
@@ -250,14 +268,17 @@ function Shell({
   auth,
   listening,
   onListen,
+  tour,
 }: {
   children: ReactNode;
   auth?: ReturnType<typeof useAuth>;
   listening?: boolean;
   onListen?: () => void;
+  tour?: TourState;
 }) {
   return (
-    <div className="flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
+    <div className="relative flex h-full flex-col gap-2.5 overflow-hidden p-4 short:gap-1.5 short:p-1.5">
+      {tour && <Tour tour={tour} label="show me around" />}
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-0.5">
         {/* The same two tabs as the tuner, so the app has one navigation
             rather than a link out and a link back. */}
