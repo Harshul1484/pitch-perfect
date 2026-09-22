@@ -1,65 +1,107 @@
+![](docs/screenshots/hero.png)
+
 <div align="center">
 <br>
 
-<img src="public/icon-192.png" width="56" alt="">
+[**Open the app**](https://pitch-perfect-ashen.vercel.app/) &nbsp;·&nbsp; Installable &nbsp;·&nbsp; Works offline
 
-### Perfect Pitch
+<br>
+</div>
 
-A violin tuner that tells you _how close_ you are,<br>
-and a notebook that remembers what you played.
+---
+
+<div align="center">
+<br>
+
+<sub>**01** &nbsp; THE PROBLEM</sub>
+
+### A violin has no frets.
+
+Thirty cents flat is still recognisably C4.<br>
+A tuner that only names the note will call a bad note correct.
 
 <br>
 
-[**Open**](https://pitch-perfect-ashen.vercel.app/) · Installable · Works offline
+<img src="docs/screenshots/readout-flat.png" width="270" alt="">
+
+<sub><i>Twelve cents flat. The name was never the hard part.</i></sub>
 
 <br>
+</div>
+
+---
+
+<div align="center">
+<br>
+
+<sub>**02** &nbsp; TUNE</sub>
+
+### Every octave, all the time.
+
+</div>
 
 ![](docs/screenshots/tuner.png)
 
-<br>
+<div align="center">
+<sub><i>Eighty-eight keys, because scordatura moves the range. Metronome, drone,<br>and a reference tone under every key.</i></sub>
+<br><br>
 </div>
 
-## Why
-
-A violin has no frets. Thirty cents flat is still recognisably C4, so a tuner
-that only names the note will call a bad note correct.
-
-The cents are the part worth having.
-
-<br>
+---
 
 <div align="center">
-<img src="docs/screenshots/readout-flat.png" width="300" alt="">
-</div>
-
 <br>
 
-## Practice
+<sub>**03** &nbsp; PRACTICE</sub>
 
-The bed stops being a readout and becomes a record. Green where you were in
-tune, red where you were not — a passage leaves a map of its own intonation.
+### The bed remembers.
+
+</div>
 
 ![](docs/screenshots/practice.png)
 
+<div align="center">
+<sub><i>Green where you were in tune, red where you were not.<br>A passage leaves a map of its own intonation.</i></sub>
+<br><br>
+</div>
+
+---
+
+<div align="center">
 <br>
 
-## Notes
+<sub>**04** &nbsp; NOTES</sub>
 
-Write a piece in sargam or Western letters. Hear it back. Then practise
-against it — a note at a time, or a timed run that scores the whole thing.
+### Write it. Hear it. Play it back.
+
+</div>
 
 ![](docs/screenshots/notes.png)
 
-<br>
+<div align="center">
+<sub><i>Sargam or Western letters, movable Sa. Then practise against it —<br>a note at a time, or a timed run that scores the whole thing.</i></sub>
+<br><br>
+</div>
 
-## Phone
-
-Nine octaves do not fit in a portrait column, so the page turns itself on its
-side. Install it and it opens with no network at all.
+---
 
 <div align="center">
-<img src="docs/screenshots/phone.png" width="620" alt="">
+<br>
+
+<sub>**05** &nbsp; ANYWHERE</sub>
+
+### Turns sideways. Installs.
+
+<br>
+
+<img src="docs/screenshots/phone.png" width="660" alt="">
+
+<sub><i>Nine octaves will not fit a portrait column, so the page turns itself.<br>Installed, it opens with no network at all.</i></sub>
+
+<br>
 </div>
+
+---
 
 <br>
 
@@ -70,10 +112,9 @@ bun install
 bun run dev
 ```
 
-Press **listen** and allow the microphone.
-
-Notes need Firebase — copy `.env.example` to `.env.local`. Without it the
-tuner still runs; only signing in is unavailable.
+Press **listen** and allow the microphone. Notes need Firebase — copy
+`.env.example` to `.env.local`. Without it the tuner still runs; only signing
+in is unavailable.
 
 <br>
 
@@ -85,7 +126,7 @@ tuner still runs; only signing in is unavailable.
 | `bun run e2e`   | Playwright, real Chrome |
 | `bun run lint`  | ESLint                  |
 
-End-to-end tests for notes need `firebase emulators:start`.
+<sub>End-to-end tests for notes need `firebase emulators:start`.</sub>
 
 <br>
 
@@ -102,7 +143,7 @@ Square Difference Function, not the tallest. That is what stops a bowed
 string's harmonics reading an octave high. Echo cancellation, noise
 suppression and gain control are all off; each one mangles a sustained tone.
 
-One note at a time. Double stops waver between the two.
+<sub>One note at a time. Double stops waver between the two.</sub>
 
 **Offline** — precache the build, hashed assets cache-first, navigations
 network-first with the cached shell behind them. A Vite plugin stamps the file
@@ -112,12 +153,10 @@ list in at build, so it cannot drift.
 
 ## Built with
 
-Vite · React 19 · TypeScript · Tailwind 4 · Firebase · Vitest · Playwright
+<sub>VITE · REACT 19 · TYPESCRIPT · TAILWIND 4 · FIREBASE · VITEST · PLAYWRIGHT</sub>
 
 No audio, charting or PWA library. Detection, synthesis, metronome scheduling
 and the service worker are all first-party.
-
-<br>
 
 ```
 src/
@@ -131,7 +170,9 @@ src/
 <br>
 
 <div align="center">
+<sub>
 
 [Design specs](docs/superpowers/specs/)
 
+</sub>
 </div>
