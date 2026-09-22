@@ -20,13 +20,13 @@
 Thirty cents flat is still recognisably C4.<br>
 A tuner that only names the note will call a bad note correct.
 
-<br>
+</div>
 
-<img src="docs/screenshots/readout-flat.png" width="270" alt="">
+![](docs/screenshots/same-note.png)
 
-<sub><i>Twelve cents flat. The name was never the hard part.</i></sub>
-
-<br>
+<div align="center">
+<sub><i>The name was never the hard part.</i></sub>
+<br><br>
 </div>
 
 ---
