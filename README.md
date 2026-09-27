@@ -18,14 +18,10 @@ And a notebook for the pieces you are learning.
 
 <br>
 
-Most tuners name the note and stop. On a fretted instrument that is enough. On a
-violin it is not — thirty cents flat is still recognisably C4, so a tuner that only
-names the note will tell you a bad note is correct.
-
-Perfect Pitch shows the cents. It remembers where you were sharp and where you were
-flat across a whole passage, and it keeps the pieces you are working on in the same
-place you tune. It runs in a browser, installs to a home screen, and works with no
-network at all.
+Perfect Pitch is a tuner and a practice notebook for violinists, in one browser tab.
+It shows how far off you are in cents, remembers that across a whole passage, and
+keeps the pieces you are learning where you tune them. It installs to a home screen
+and works with no network.
 
 <br>
 
